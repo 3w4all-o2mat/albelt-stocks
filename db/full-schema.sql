@@ -102,9 +102,10 @@ CREATE TABLE IF NOT EXISTS public.albelt_membership
     full_name        varchar(150),
     atelier_id       integer,
     date_creation    timestamp    NOT NULL DEFAULT NOW(),
-    is_active        boolean      NOT NULL DEFAULT TRUE,
-    CONSTRAINT fk_albelt_membership_atelier_id
-        FOREIGN KEY (atelier_id) REFERENCES public.albelt_atelier(id) ON DELETE SET NULL
+    is_active        boolean      NOT NULL DEFAULT TRUE
+    -- NOTE: FK to public.albelt_atelier(id) is added below in the idempotent
+    -- DO block, because that table is created in a later section. Declaring
+    -- the FK here would break the migration on a fresh database.
 );
 
 -- Idempotent migration: add atelier_id if the table was created before this column existed.
