@@ -4,6 +4,8 @@ import type {
   BO,
   NewBOInput,
   NewCutInput,
+  NewSIInput,
+  PieceType,
   StockPiece,
   Supplier,
 } from "@/lib/types";
@@ -258,20 +260,38 @@ export async function getRecentCuts(
   return rows.map((r) => mapPiece(r));
 }
 
+export interface GetCutsByTypeOptions {
+  /** Restrict to a single atelier (by name). */
+  atelier?: string | null;
+  /** Restrict to a list of allowed atelier names. */
+  allowedAteliers?: string[];
+  /** Filter by commande name (CC only). */
+  cmdName?: string | null;
+  /** Filter by client name (CC only). */
+  clientName?: string | null;
+}
+
 export async function getCutsByType(
-  type: "CC" | "CS" | "CP",
-  atelier?: string | null,
-  allowedAteliers?: string[]
+  type: "CC" | "CS" | "CP" | "SI",
+  options: GetCutsByTypeOptions = {}
 ): Promise<StockPiece[]> {
   const params: unknown[] = [type];
   const where: string[] = [`s.type = $1`];
-  if (atelier) {
-    params.push(atelier);
+  if (options.atelier) {
+    params.push(options.atelier);
     where.push(`s.atelier = $${params.length}`);
   }
-  if (allowedAteliers !== undefined) {
-    params.push(allowedAteliers);
+  if (options.allowedAteliers !== undefined) {
+    params.push(options.allowedAteliers);
     where.push(`s.atelier = ANY($${params.length})`);
+  }
+  if (options.cmdName) {
+    params.push(`%${options.cmdName}%`);
+    where.push(`s.cmd_name ILIKE $${params.length}`);
+  }
+  if (options.clientName) {
+    params.push(`%${options.clientName}%`);
+    where.push(`cl.name ILIKE $${params.length}`);
   }
   const rows = await query(
     `SELECT s.*, ${CATEGORY_COLS}, ${COMMANDE_COLS}
@@ -344,6 +364,11 @@ export async function getDashboardKpis(
      FROM albelt_stocks WHERE type = 'CC'${whereClause}`,
     params
   );
+  const si = await queryOne<{ total: string | null; count: string }>(
+    `SELECT COALESCE(SUM(longueur::bigint * largeur::bigint), 0)::text AS total, COUNT(*)::text AS count
+     FROM albelt_stocks WHERE type = 'SI'${whereClause}`,
+    params
+  );
 
   return {
     boCount: Number(bos?.count ?? 0),
@@ -358,6 +383,8 @@ export async function getDashboardKpis(
     cpLostSurface: Number(cp?.total ?? 0),
     ccCount: Number(cc?.count ?? 0),
     ccTotalSurface: Number(cc?.total ?? 0),
+    siCount: Number(si?.count ?? 0),
+    siTotalSurface: Number(si?.total ?? 0),
   };
 }
 
@@ -566,4 +593,184 @@ export async function getDistinctBOYears(): Promise<number[]> {
     `SELECT DISTINCT year FROM albelt_stocks WHERE type = 'BO' AND year IS NOT NULL ORDER BY year DESC`
   );
   return rows.map((r) => r.year);
+}
+
+/**
+ * Create a new SI (Stock Initial — initial stock piece) record.
+ *
+ * SI pieces are like BOs but with no supplier/year. The naming convention
+ * mirrors BOs: `SI_<categoryName>_<zero-padded sequence>`.
+ */
+export async function createSI(input: NewSIInput): Promise<StockPiece> {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    const catRes = await client.query(
+      `SELECT name FROM albelt_stocks_categories WHERE id = $1`,
+      [input.stk_category_id]
+    );
+    const categoryName =
+      (catRes.rows[0]?.name as string | undefined) ?? "UNKNOWN";
+
+    const countRes = await client.query(
+      `SELECT COUNT(*)::int AS count
+         FROM albelt_stocks
+        WHERE type = 'SI' AND stk_category_id = $1`,
+      [input.stk_category_id]
+    );
+    const nextSeq = Number(countRes.rows[0]?.count ?? 0) + 1;
+    const seqStr = String(nextSeq).padStart(3, "0");
+    const name = `SI_${categoryName}_${seqStr}`;
+
+    const surface = Math.floor((input.longueur * input.largeur) / 1_000_000);
+
+    const insertRes = await client.query(
+      `INSERT INTO albelt_stocks
+         (type, stk_category_id, parent_id, longueur, largeur, cute_x, cute_y,
+          atelier, user_id, company_id, observation, name, chained_name,
+          surface, surface_restante,
+          create_uid, create_date, write_uid, write_date)
+       VALUES
+         ('SI', $1, NULL, $2, $3, 0, 0,
+          $4, $5, $6, $7, $8, $8,
+          $9, $9,
+          $10, NOW(), $10, NOW())
+       RETURNING *`,
+      [
+        input.stk_category_id,
+        input.longueur,
+        input.largeur,
+        input.atelier,
+        input.user_id,
+        input.company_id,
+        input.observation ?? null,
+        name,
+        surface,
+        input.create_uid,
+      ]
+    );
+
+    await client.query("COMMIT");
+    return mapPiece(insertRes.rows[0] as Record<string, unknown>);
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Move a stock piece to a different atelier.
+ * Returns the updated piece, or `null` if the id was not found.
+ */
+export async function updateStockAtelier(
+  id: number,
+  atelier: string
+): Promise<StockPiece | null> {
+  const row = await queryOne(
+    `UPDATE albelt_stocks
+        SET atelier = $1, write_date = NOW()
+      WHERE id = $2
+     RETURNING *`,
+    [atelier, id]
+  );
+  if (!row) return null;
+  // Re-fetch with joins so the returned object matches the StockPiece shape.
+  return getPieceById(id);
+}
+
+/**
+ * Find stock pieces (BO / SI / CS) that can accommodate a cut of the given
+ * dimensions, optionally restricted to a specific atelier or a list of
+ * allowed atelier names.
+ *
+ * A piece is considered "available" if:
+ *   - it is not consumed,
+ *   - its category matches,
+ *   - its remaining surface can fit the requested (longueur × largeur) area
+ *     (the cut is rotated to fit either dimension pairing).
+ */
+export async function findAvailableStockPieces(
+  stk_category_id: number,
+  longueur: number,
+  largeur: number,
+  atelier?: string | null,
+  allowedAteliers?: string[]
+): Promise<StockPiece[]> {
+  const params: unknown[] = [];
+  const where: string[] = [
+    `s.stk_category_id = $${(params.push(stk_category_id), params.length)}`,
+    `COALESCE(s.is_consumed, false) = false`,
+    // The piece must fit the requested cut in at least one orientation, with
+    // enough remaining surface to cover the cut area.
+    `s.longueur >= GREATEST($${(params.push(longueur), params.length)}, $${(params.push(largeur), params.length)})`,
+    `s.largeur >= LEAST($${(params.length - 1)}, $${params.length})`,
+    `(s.surface_restante IS NULL OR s.surface_restante >= ($${(params.push(longueur), params.length)}::bigint * $${(params.push(largeur), params.length)}::bigint / 1000000))`,
+  ];
+
+  if (atelier) {
+    params.push(atelier);
+    where.push(`s.atelier = $${params.length}`);
+  }
+  if (allowedAteliers !== undefined) {
+    params.push(allowedAteliers);
+    where.push(`s.atelier = ANY($${params.length})`);
+  }
+
+  const rows = await query(
+    `SELECT s.*, ${CATEGORY_COLS}, ${SUPPLIER_COLS}, ${COMMANDE_COLS}
+       FROM albelt_stocks s
+       ${CATEGORY_JOIN}
+       ${SUPPLIER_JOIN}
+       ${COMMANDE_JOIN}
+      WHERE ${where.join(" AND ")}
+      ORDER BY s.surface_restante DESC NULLS LAST, s.id DESC
+      LIMIT 50`,
+    params
+  );
+  return rows.map((r) => mapPiece(r));
+}
+
+/**
+ * Paginated listing of all stock pieces (used by the Entre-Ateliers admin).
+ * Returns items + total count, optionally filtered by type.
+ */
+export async function listAllStocks(opts: {
+  type?: PieceType | null;
+  page?: number;
+  pageSize?: number;
+}): Promise<{ items: StockPiece[]; total: number }> {
+  const page = Math.max(1, opts.page ?? 1);
+  const pageSize = Math.min(200, Math.max(1, opts.pageSize ?? 40));
+  const offset = (page - 1) * pageSize;
+
+  const params: unknown[] = [];
+  const where: string[] = [];
+  if (opts.type) {
+    params.push(opts.type);
+    where.push(`s.type = $${params.length}`);
+  }
+  const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
+
+  const totalRow = await queryOne<{ count: string }>(
+    `SELECT COUNT(*)::text AS count FROM albelt_stocks s ${whereSql}`,
+    params
+  );
+  const total = totalRow ? Number(totalRow.count) : 0;
+
+  const rows = await query(
+    `SELECT s.*, ${CATEGORY_COLS}, ${SUPPLIER_COLS}, ${COMMANDE_COLS}
+       FROM albelt_stocks s
+       ${CATEGORY_JOIN}
+       ${SUPPLIER_JOIN}
+       ${COMMANDE_JOIN}
+       ${whereSql}
+       ORDER BY s.create_date DESC NULLS LAST, s.id DESC
+       LIMIT $${(params.push(pageSize), params.length)} OFFSET $${(params.push(offset), params.length)}`,
+    params
+  );
+
+  return { items: rows.map((r) => mapPiece(r)), total };
 }

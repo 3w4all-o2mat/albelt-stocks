@@ -217,6 +217,8 @@ export interface NewCutInput {
   company_id: number;
   observation?: string | null;
   create_uid: number;
+  /** Operator-entered adjustment length (côté droit). Only meaningful for CC. */
+  longueur_dx?: number | null;
 }
 
 export interface NewBOInput {
@@ -230,6 +232,17 @@ export interface NewBOInput {
   create_uid: number;
   supplier_id?: number | null;
   year?: number | null;
+}
+
+export interface NewSIInput {
+  stk_category_id: number;
+  longueur: number;
+  largeur: number;
+  atelier: string;
+  user_id: number;
+  company_id: number;
+  observation?: string | null;
+  create_uid: number;
 }
 
 export const TYPE_COLORS: Record<PieceType, string> = {
@@ -264,6 +277,8 @@ export interface MembershipUser {
   full_name: string | null;
   date_creation: string;
   is_active: boolean;
+  /** Default atelier on the membership row (legacy single field). */
+  atelier_id: number | null;
   /** IDs of ateliers this user is allowed to view/use (manager/user only). */
   atelier_ids: number[];
 }
@@ -278,6 +293,8 @@ export interface NewUserInput {
   odoo_username?: string | null;
   role: MembershipRole;
   password: string;
+  /** Default atelier for the new user. */
+  atelier_id?: number | null;
   /** Ateliers assigned to the user on creation. */
   atelier_ids?: number[];
 }
@@ -289,6 +306,8 @@ export interface UpdateUserInput {
   role?: MembershipRole;
   password?: string | null;
   is_active?: boolean;
+  /** Updates the default atelier (must belong to atelier_ids if set). */
+  atelier_id?: number | null;
   /** Replaces the user's atelier assignments when provided. */
   atelier_ids?: number[];
 }
@@ -315,17 +334,49 @@ export const ROLE_LABELS: Record<MembershipRole, string> = {
 
 export interface Atelier {
   id: number;
+  code: string;
   name: string;
   is_active: boolean;
   date_creation: string;
 }
 
 export interface NewAtelierInput {
+  code: string;
   name: string;
   is_active?: boolean;
 }
 
 export interface UpdateAtelierInput {
+  code?: string;
   name?: string;
   is_active?: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Bons d'atelier (Odoo sales commandes)
+// ---------------------------------------------------------------------------
+
+/** current_process values used in sn_sales_commandes. */
+export type BonAtelierStatus = "1" | "2" | "3";
+
+/** A single line of a sales commande. */
+export interface BonAtelierLine {
+  line_id: number;
+  product_code: string | null;
+  name: string;
+  qty: number;
+}
+
+/** A sales commande with its lines. Mirrors the shape returned by
+ *  listBonsAtelier in `lib/queries/odoo.ts`. */
+export interface BonAtelierCommande {
+  id: number;
+  name: string;
+  atelier: number;
+  current_process: string;
+  priority: number | null;
+  current_process_datetime: string | null;
+  partner_name: string | null;
+  user_name: string | null;
+  lines: BonAtelierLine[];
 }

@@ -82,10 +82,13 @@ export function AutoRefresh({
     }
 
     // --- Count‑watching + refresh ---
+    // Capture the atelier code in a local narrowed variable so that
+    // closures below see `string` instead of `string | null`.
+    const code = atelierCode;
 
     // Seed the baseline asynchronously (no router.refresh yet).
     fetch(
-      `/api/ateliers/${encodeURIComponent(atelierCode)}/bons/counts`
+      `/api/ateliers/${encodeURIComponent(code)}/bons/counts`
     )
       .then((r) => (r.ok ? r.json() : null))
       .then((counts) => {
@@ -96,7 +99,7 @@ export function AutoRefresh({
     async function pollAndRefresh() {
       try {
         const res = await fetch(
-          `/api/ateliers/${encodeURIComponent(atelierCode)}/bons/counts`
+          `/api/ateliers/${encodeURIComponent(code)}/bons/counts`
         );
         if (!res.ok) return;
         const counts: Record<string, number> = await res.json();
