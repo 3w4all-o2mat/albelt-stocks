@@ -3,9 +3,9 @@
 # ============================================
 
 # IMPORTANT: Node.js Version Maintenance
-# This Dockerfile uses Node.js 22-alpine, which is the latest LTS version at the time of writing.
+# This Dockerfile uses Node.js 22-slim, which is the latest LTS version at the time of writing.
 # To ensure security and compatibility, regularly update the NODE_VERSION ARG to the latest LTS version.
-ARG NODE_VERSION=22-alpine
+ARG NODE_VERSION=22-slim
 
 FROM node:${NODE_VERSION} AS dependencies
 
