@@ -1,9 +1,9 @@
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 
 const ROUNDS = Number(process.env.BCRYPT_ROUNDS ?? 12);
 
 /**
- * Hash a plain-text password using bcrypt.
+ * Hash a plain-text password using bcryptjs.
  */
 export async function hashPassword(plain: string): Promise<string> {
   if (!plain) throw new Error("Password must not be empty");
@@ -12,7 +12,7 @@ export async function hashPassword(plain: string): Promise<string> {
 
 /**
  * Verify a plain-text password against a stored bcrypt hash.
- * Constant-time comparison is handled by bcrypt internally.
+ * Constant-time comparison is handled by bcryptjs internally.
  */
 export async function verifyPassword(
   plain: string,

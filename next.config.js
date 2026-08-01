@@ -3,7 +3,7 @@ const nextConfig = {
   output: 'standalone',
   reactStrictMode: true,
   experimental: {
-    serverComponentsExternalPackages: ["pg", "bcrypt"],
+    serverComponentsExternalPackages: ["pg"],
   },
   webpack: (config) => {
     // Konva references the `canvas` (node-canvas) package for SSR, but it is
