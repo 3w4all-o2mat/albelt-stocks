@@ -20,8 +20,11 @@ services:
     labels:
       - "com.albelt-stocks.commit=${COMMIT:-unknown}"
       - "com.albelt-stocks.deployed-at=${DEPLOYED_AT:-unknown}"
-    # Standalone image already has the user baked in; no extra volumes needed
-    # unless you want to persist generated files. Add them here if/when needed.
+    # Mount the host's ./public/ folder so static assets (logo, favicon, etc.)
+    # are served from the VPS filesystem instead of being baked into the image.
+    # The image still ships an empty /app/public/ as a safety net.
+    volumes:
+      - ./public:/app/public
     networks:
       - existing_net
 networks:
