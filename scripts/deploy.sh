@@ -106,6 +106,22 @@ if [ "${ready}" -ne 1 ]; then
   exit 1
 fi
 
+# Apply schema + seed master user. Both scripts are idempotent and are loaded
+# from the freshly deployed image so the SQL is always in sync with the code.
+log "Running database migrations..."
+${DOCKER} exec -e ADMIN_PASSWORD="${ADMIN_PASSWORD:-}" \
+                   -e ADMIN_USERNAME="${ADMIN_USERNAME:-admin}" \
+                   -e ADMIN_EMAIL="${ADMIN_EMAIL:-}" \
+                   -e ADMIN_FULL_NAME="${ADMIN_FULL_NAME:-Administrator}" \
+  "${CONTAINER_NAME}" node /app/scripts/apply-all-migrations.mjs \
+  || { log "ERROR: migrations failed"; exit 1; }
+${DOCKER} exec -e ADMIN_PASSWORD="${ADMIN_PASSWORD:-}" \
+                   -e ADMIN_USERNAME="${ADMIN_USERNAME:-admin}" \
+                   -e ADMIN_EMAIL="${ADMIN_EMAIL:-}" \
+                   -e ADMIN_FULL_NAME="${ADMIN_FULL_NAME:-Administrator}" \
+  "${CONTAINER_NAME}" node /app/scripts/setup-membership.mjs \
+  || { log "ERROR: setup-membership failed"; exit 1; }
+
 # Prune old images: keep the 3 most recent SHA tags, plus the protected
 # latest/previous tags. Sort by CreatedAt (newest first) so the freshly
 # deployed images stay; remove the rest.
