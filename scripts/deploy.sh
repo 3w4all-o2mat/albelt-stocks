@@ -21,11 +21,34 @@ APP_URL="http://127.0.0.1:${PORT}"
 
 log() { echo "[deploy $(date +%H:%M:%S)] $*"; }
 
+# Pick a working `docker` invocation: try `docker` directly first; if the
+# user can't reach /var/run/docker.sock, fall back to `sudo docker`. This
+# keeps the script portable across VPS setups (user in docker group vs.
+# passwordless sudo).
+DOCKER=""
+if docker version >/dev/null 2>&1; then
+  DOCKER="docker"
+elif sudo -n docker version >/dev/null 2>&1; then
+  DOCKER="sudo docker"
+  log "Using 'sudo docker' (no passwordless docker group membership)"
+else
+  log "ERROR: cannot access the docker daemon (neither 'docker' nor 'sudo -n docker' worked)"
+  exit 1
+fi
+
 # Pick docker compose command (v2 plugin preferred, v1 fallback).
-if docker compose version >/dev/null 2>&1; then
-  COMPOSE=(docker compose)
+if ${DOCKER} compose version >/dev/null 2>&1; then
+  COMPOSE=(${DOCKER} compose)
 elif command -v docker-compose >/dev/null 2>&1; then
-  COMPOSE=(docker-compose)
+  # If the v1 binary needs elevation, wrap it in sudo too.
+  if docker-compose version >/dev/null 2>&1; then
+    COMPOSE=(docker-compose)
+  elif sudo -n docker-compose version >/dev/null 2>&1; then
+    COMPOSE=(sudo docker-compose)
+  else
+    log "ERROR: docker-compose (v1) is installed but not usable without a password"
+    exit 1
+  fi
 else
   log "ERROR: neither 'docker compose' nor 'docker-compose' is installed"
   exit 1
@@ -52,10 +75,10 @@ cd "${DEPLOY_DIR}"
 [ -f docker-compose.yml ] || { log "ERROR: docker-compose.yml missing in ${DEPLOY_DIR}"; exit 1; }
 
 # Tag previous image for quick rollback.
-if docker image inspect "${IMAGE_NAME}:latest" >/dev/null 2>&1 \
+if ${DOCKER} image inspect "${IMAGE_NAME}:latest" >/dev/null 2>&1 \
    && [ "${NEW_TAG}" != "latest" ]; then
   log "Tagging previous image as ${IMAGE_NAME}:previous"
-  docker tag "${IMAGE_NAME}:latest" "${IMAGE_NAME}:previous" || true
+  ${DOCKER} tag "${IMAGE_NAME}:latest" "${IMAGE_NAME}:previous" || true
 fi
 
 # `up -d` is idempotent: stops & removes the old container, starts the new one.
@@ -78,7 +101,7 @@ done
 
 if [ "${ready}" -ne 1 ]; then
   log "ERROR: App did not become healthy. Recent logs:"
-  docker logs --tail 80 "${CONTAINER_NAME}" || true
+  ${DOCKER} logs --tail 80 "${CONTAINER_NAME}" || true
   "${COMPOSE[@]}" ps || true
   exit 1
 fi
@@ -87,16 +110,16 @@ fi
 # latest/previous tags. Sort by CreatedAt (newest first) so the freshly
 # deployed images stay; remove the rest.
 log "Pruning old ${IMAGE_NAME} images (keeping 3 most recent SHA tags)..."
-docker images "${IMAGE_NAME}" --format '{{.CreatedAt}}|{{.ID}}|{{.Tag}}' \
+${DOCKER} images "${IMAGE_NAME}" --format '{{.CreatedAt}}|{{.ID}}|{{.Tag}}' \
   | grep -vE '\|(latest|previous)$' \
   | sort -r \
   | tail -n +4 \
   | cut -d'|' -f2 \
-  | xargs -r docker rmi -f 2>/dev/null || true
+  | xargs -r ${DOCKER} rmi -f 2>/dev/null || true
 
 # Prune dangling images (untagged intermediate layers left over from builds).
 log "Pruning dangling images..."
-docker image prune -f >/dev/null 2>&1 || true
+${DOCKER} image prune -f >/dev/null 2>&1 || true
 
 log "Done. Container '${CONTAINER_NAME}' is running ${NEW_IMAGE}"
 "${COMPOSE[@]}" ps
