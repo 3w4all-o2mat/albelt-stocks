@@ -21,7 +21,7 @@ jobs:
       # notice is informational. We acknowledge it explicitly to silence the
       # warning per https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
       ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: "true"
-      ACTIONS_NODE_VERSION: "24"
+      ACTIONS_NODE_VERSION: "22"
 
     steps:
       - name: Checkout
