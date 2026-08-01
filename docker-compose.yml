@@ -1,0 +1,28 @@
+services:
+  app:
+    image: ${IMAGE:-albelt-stocks}:${TAG:-latest}
+    container_name: albelt-stocks
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: "0.0.0.0"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 20s
+    labels:
+      - "com.albelt-stocks.commit=${COMMIT:-unknown}"
+      - "com.albelt-stocks.deployed-at=${DEPLOYED_AT:-unknown}"
+    # Standalone image already has the user baked in; no extra volumes needed
+    # unless you want to persist generated files. Add them here if/when needed.
+    networks:
+      - existing_net
+networks:
+  existing_net:
+    external: true
+    name: odoo-network   # the exact network name from step 1
