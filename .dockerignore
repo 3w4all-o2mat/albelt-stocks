@@ -3,6 +3,14 @@
 # Keeps Docker builds fast, lean, and free of development files.
 ############################################################
 
+# Explicit allow-list — these are NOT ignored even if a later rule tries to.
+# Next.js' standalone output tracing does not include them, so the Dockerfile
+# copies them explicitly to ensure they end up in the runtime image.
+!scripts/
+!scripts/**
+!db/
+!db/**
+
 # Dependencies (installed inside Docker, never copied)
 node_modules/
 .pnpm-store/

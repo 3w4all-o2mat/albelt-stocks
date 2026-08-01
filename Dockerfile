@@ -44,6 +44,8 @@ COPY --from=dependencies /app/node_modules ./node_modules
 # Copy application source code
 COPY . .
 
+# Keep scripts/ and db/ in the builder stage so the runner stage can
+# COPY them from --from=builder above.
 ENV NODE_ENV=production
 
 # Next.js collects completely anonymous telemetry data about general usage.
@@ -93,6 +95,13 @@ ENV HOSTNAME="0.0.0.0"
 
 # Copy production assets
 COPY --from=builder --chown=node:node /app/public ./public
+
+# Copy maintenance scripts and SQL schema so the deploy script can run
+# migrations inside the running container (scripts/*.mjs + db/full-schema.sql).
+# Next.js' standalone output tracing only copies files in the import graph,
+# so scripts/ and db/ must be copied explicitly into the runner stage.
+COPY --from=builder --chown=node:node /app/scripts ./scripts
+COPY --from=builder --chown=node:node /app/db ./db
 
 # Set the correct permission for prerender cache
 RUN mkdir .next

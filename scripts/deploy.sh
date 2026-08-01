@@ -106,21 +106,28 @@ if [ "${ready}" -ne 1 ]; then
   exit 1
 fi
 
-# Apply schema + seed master user. Both scripts are idempotent and are loaded
-# from the freshly deployed image so the SQL is always in sync with the code.
+# Apply schema. The SQL file is idempotent and seeds a default 'master' user
+# (username=master, password=ChangeMe!2026) so a fresh DB is immediately usable.
 log "Running database migrations..."
-${DOCKER} exec -e ADMIN_PASSWORD="${ADMIN_PASSWORD:-}" \
-                   -e ADMIN_USERNAME="${ADMIN_USERNAME:-admin}" \
-                   -e ADMIN_EMAIL="${ADMIN_EMAIL:-}" \
-                   -e ADMIN_FULL_NAME="${ADMIN_FULL_NAME:-Administrator}" \
-  "${CONTAINER_NAME}" node /app/scripts/apply-all-migrations.mjs \
+${DOCKER} exec "${CONTAINER_NAME}" \
+  node /app/scripts/apply-all-migrations.mjs \
   || { log "ERROR: migrations failed"; exit 1; }
-${DOCKER} exec -e ADMIN_PASSWORD="${ADMIN_PASSWORD:-}" \
-                   -e ADMIN_USERNAME="${ADMIN_USERNAME:-admin}" \
-                   -e ADMIN_EMAIL="${ADMIN_EMAIL:-}" \
-                   -e ADMIN_FULL_NAME="${ADMIN_FULL_NAME:-Administrator}" \
-  "${CONTAINER_NAME}" node /app/scripts/setup-membership.mjs \
-  || { log "ERROR: setup-membership failed"; exit 1; }
+
+# Optionally re-seed the master user with custom credentials. Only runs when
+# ADMIN_PASSWORD is set AND the caller asked for a username other than the
+# default 'master' already seeded by the schema.
+if [ -n "${ADMIN_PASSWORD:-}" ] && [ "${ADMIN_USERNAME:-admin}" != "master" ]; then
+  log "Seeding custom admin user (${ADMIN_USERNAME})..."
+  ${DOCKER} exec \
+    -e ADMIN_PASSWORD="${ADMIN_PASSWORD}" \
+    -e ADMIN_USERNAME="${ADMIN_USERNAME}" \
+    -e ADMIN_EMAIL="${ADMIN_EMAIL:-}" \
+    -e ADMIN_FULL_NAME="${ADMIN_FULL_NAME:-Administrator}" \
+    "${CONTAINER_NAME}" node /app/scripts/setup-membership.mjs \
+    || { log "ERROR: setup-membership failed"; exit 1; }
+else
+  log "Skipping setup-membership (master user already seeded by schema)."
+fi
 
 # Prune old images: keep the 3 most recent SHA tags, plus the protected
 # latest/previous tags. Sort by CreatedAt (newest first) so the freshly
