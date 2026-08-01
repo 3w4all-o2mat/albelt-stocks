@@ -11,7 +11,7 @@
 
 set -euo pipefail
 
-DEPLOY_DIR="${DEPLOY_DIR:-/home/ubuntu/plaza}"
+DEPLOY_DIR="${DEPLOY_DIR:-/home/ubuntu/albelt-stocks}"
 NEW_IMAGE="${NEW_IMAGE:-albelt-stocks:latest}"
 NEW_TAG="${NEW_TAG:-latest}"
 PORT="${PORT:-3000}"
