@@ -73,7 +73,7 @@ jobs:
 
       - name: Upload compose + deploy script to VPS
         run: |
-          scp ./docker-compose.yml ./scripts/deploy.sh \
+          scp ./docker-compose.yml ./scripts/deploy.sh ./.env.production \
               ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:${{ env.VPS_DEPLOY_DIR }}/
           ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
               "chmod +x ${{ env.VPS_DEPLOY_DIR }}/deploy.sh"
