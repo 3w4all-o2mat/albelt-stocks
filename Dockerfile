@@ -67,6 +67,11 @@ RUN if [ -f package-lock.json ]; then \
     echo "No lockfile found." && exit 1; \
   fi
 
+# Ensure the public/ directory exists so the standalone runner image can
+# COPY it (the public/ directory is gitignored and dockerignored in this
+# project — static assets are managed on the VPS via a mounted volume).
+RUN mkdir -p /app/public
+
 # ============================================
 # Stage 3: Run Next.js application
 # ============================================
