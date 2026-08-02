@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
+import { useMutation } from "@tanstack/react-query";
 import { Search, X, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Field, Input, Select } from "@/components/ui/Form";
@@ -10,15 +10,17 @@ import {
   formatDimensions,
   formatSurface,
   typeColor,
-  typeLabel,
 } from "@/lib/utils";
-import type { Category, StockPiece } from "@/lib/types";
-
-async function fetchCategories(): Promise<Category[]> {
-  const res = await fetch("/api/categories");
-  if (!res.ok) throw new Error("Impossible de charger les catégories");
-  return (await res.json()) as Category[];
-}
+import type { StockPiece } from "@/lib/types";
+import {
+  COLOR_OPTIONS,
+  MOTIF_OPTIONS,
+  NATURE_OPTIONS,
+  PAYS_OPTIONS,
+  PLIES_OPTIONS,
+  THICKNESS_OPTIONS,
+  type CategoryOption,
+} from "@/lib/bobine-category-options";
 
 type AvailabilityResponse = {
   success: boolean;
@@ -43,20 +45,38 @@ const GROUPS: { key: "bo" | "cs" | "si"; label: string }[] = [
   { key: "si", label: "Stock initial" },
 ];
 
+type FilterKey = "nature" | "color" | "plies" | "thickness" | "motif" | "pays";
+
+const FILTER_FIELDS: {
+  key: FilterKey;
+  label: string;
+  options: CategoryOption[];
+}[] = [
+  { key: "nature", label: "Nature", options: NATURE_OPTIONS },
+  { key: "color", label: "Couleur", options: COLOR_OPTIONS },
+  { key: "plies", label: "Plies", options: PLIES_OPTIONS },
+  { key: "thickness", label: "Épaisseur", options: THICKNESS_OPTIONS },
+  { key: "motif", label: "Motif", options: MOTIF_OPTIONS },
+  { key: "pays", label: "Pays", options: PAYS_OPTIONS },
+];
+
+const ANY_OPTION = "— Indifférent —";
+
 export function AvailabilityModal({
   isOpen,
   onClose,
   atelier,
 }: AvailabilityModalProps) {
-  const [stkCategoryId, setStkCategoryId] = useState("");
+  const [filters, setFilters] = useState<Record<FilterKey, string>>({
+    nature: "",
+    color: "",
+    plies: "",
+    thickness: "",
+    motif: "",
+    pays: "",
+  });
   const [longueur, setLongueur] = useState("");
   const [largeur, setLargeur] = useState("");
-
-  const { data: categories, isLoading: categoriesLoading } = useQuery({
-    queryKey: ["categories"],
-    queryFn: fetchCategories,
-    enabled: isOpen,
-  });
 
   const searchMutation = useMutation({
     mutationFn: async () => {
@@ -64,7 +84,12 @@ export function AvailabilityModal({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          stk_category_id: Number(stkCategoryId),
+          nature: filters.nature || null,
+          color: filters.color || null,
+          plies: filters.plies || null,
+          thickness: filters.thickness || null,
+          motif: filters.motif || null,
+          pays: filters.pays || null,
           longueur: Number(longueur),
           largeur: Number(largeur),
           atelier,
@@ -80,7 +105,14 @@ export function AvailabilityModal({
 
   useEffect(() => {
     if (!isOpen) {
-      setStkCategoryId("");
+      setFilters({
+        nature: "",
+        color: "",
+        plies: "",
+        thickness: "",
+        motif: "",
+        pays: "",
+      });
       setLongueur("");
       setLargeur("");
       searchMutation.reset();
@@ -102,10 +134,19 @@ export function AvailabilityModal({
     };
   }, [isOpen, onClose]);
 
+  const activeFilters = useMemo(
+    () =>
+      FILTER_FIELDS.filter((f) => filters[f.key] !== "").map((f) => ({
+        key: f.key,
+        label: f.label,
+        value: filters[f.key],
+      })),
+    [filters]
+  );
+
   if (!isOpen) return null;
 
-  const canSubmit =
-    stkCategoryId && Number(longueur) > 0 && Number(largeur) > 0;
+  const canSubmit = Number(longueur) > 0 && Number(largeur) > 0;
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -113,9 +154,14 @@ export function AvailabilityModal({
     searchMutation.mutate();
   }
 
+  function updateFilter(key: FilterKey, value: string) {
+    setFilters((prev) => ({ ...prev, [key]: value }));
+  }
+
   const results = searchMutation.data;
   const hasResults =
-    results && (results.bo.length > 0 || results.cs.length > 0 || results.si.length > 0);
+    results &&
+    (results.bo.length > 0 || results.cs.length > 0 || results.si.length > 0);
 
   return (
     <div
@@ -147,22 +193,36 @@ export function AvailabilityModal({
 
         <div className="flex-1 overflow-y-auto p-5">
           <form onSubmit={submit} className="grid gap-4">
-            <Field label="Catégorie de bobine">
-              <Select
-                value={stkCategoryId}
-                onChange={(e) => setStkCategoryId(e.target.value)}
-                disabled={categoriesLoading}
-                required
-              >
-                <option value="">— Choisir une catégorie —</option>
-                {categories?.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name} · {c.nature} · {c.color} · {c.thickness} ·{" "}
-                    {c.plies} · {c.motif}
-                  </option>
-                ))}
-              </Select>
-            </Field>
+            <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
+              <h3 className="mb-3 text-sm font-medium text-slate-900">
+                Critères
+              </h3>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
+                {FILTER_FIELDS.map((field) => {
+                  const isActive = filters[field.key] !== "";
+                  return (
+                    <Field key={field.key} label={field.label}>
+                      <Select
+                        value={filters[field.key]}
+                        onChange={(e) => updateFilter(field.key, e.target.value)}
+                        className={
+                          isActive
+                            ? "!border-red-500 !bg-red-50 !text-red-700 !focus:border-red-500 !focus:ring-red-500"
+                            : undefined
+                        }
+                      >
+                        <option value="">{ANY_OPTION}</option>
+                        {field.options.map((opt) => (
+                          <option key={opt.label} value={opt.label}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </Select>
+                    </Field>
+                  );
+                })}
+              </div>
+            </div>
 
             <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
               <h3 className="mb-3 text-sm font-medium text-slate-900">
@@ -214,6 +274,23 @@ export function AvailabilityModal({
           {searchMutation.isError && (
             <div className="mt-4 rounded-md bg-cp/10 px-3 py-2 text-sm text-cp">
               {searchMutation.error.message}
+            </div>
+          )}
+
+          {activeFilters.length > 0 && (
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <span className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                Filtres actifs
+              </span>
+              {activeFilters.map((f) => (
+                <span
+                  key={f.key}
+                  className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-700"
+                >
+                  <span className="font-medium">{f.label}:</span>
+                  <span>{f.value}</span>
+                </span>
+              ))}
             </div>
           )}
 

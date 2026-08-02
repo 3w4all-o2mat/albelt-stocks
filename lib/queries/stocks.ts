@@ -24,6 +24,7 @@ function mapPiece(row: Record<string, unknown>): StockPiece {
         plies: String(row.plies ?? ""),
         thickness: String(row.thickness ?? ""),
         motif: String(row.motif ?? ""),
+        pays: row.pays == null ? null : String(row.pays),
       }
     : undefined;
 
@@ -89,7 +90,7 @@ const SUPPLIER_JOIN = `
 `;
 
 const CATEGORY_COLS = `
-  c.name AS cat_name, c.nature, c.color, c.thickness, c.plies, c.motif
+  c.name AS cat_name, c.nature, c.color, c.thickness, c.plies, c.motif, c.pays
 `;
 
 const SUPPLIER_COLS = `
@@ -684,31 +685,104 @@ export async function updateStockAtelier(
 /**
  * Find stock pieces (BO / SI / CS) that can accommodate a cut of the given
  * dimensions, optionally restricted to a specific atelier or a list of
- * allowed atelier names.
+ * allowed atelier names, and optionally narrowed by individual category
+ * attributes (nature, color, plies, thickness, motif, pays).
+ *
+ * Each attribute filter is optional and combined with AND. An attribute that
+ * is not provided (or an empty string) imposes no restriction on that
+ * attribute. The lookup is by exact label match against
+ * `albelt_stocks_categories` (e.g. `c.nature = 'Pvc'`).
  *
  * A piece is considered "available" if:
+ *   - its type is one of BO / CS / SI,
  *   - it is not consumed,
- *   - its category matches,
+ *   - it matches every provided category attribute (if any),
  *   - its remaining surface can fit the requested (longueur × largeur) area
  *     (the cut is rotated to fit either dimension pairing).
+ *
+ * The result is grouped server-side into `{ bo, cs, si }`. Each bucket is
+ * capped at 50 rows, ordered by remaining surface DESC then id DESC.
  */
+export type AvailabilityAttributeFilter = {
+  nature?: string;
+  color?: string;
+  plies?: string;
+  thickness?: string;
+  motif?: string;
+  pays?: string;
+};
+
+export type FindAvailableStockPiecesOptions = AvailabilityAttributeFilter & {
+  longueur: number;
+  largeur: number;
+  atelier?: string | null;
+  allowedAteliers?: string[];
+};
+
+export type AvailabilityBuckets = {
+  bo: StockPiece[];
+  cs: StockPiece[];
+  si: StockPiece[];
+};
+
+const BUCKET_LIMIT = 50;
+const ATTRIBUTE_TO_COLUMN: Record<keyof AvailabilityAttributeFilter, string> = {
+  nature: "c.nature",
+  color: "c.color",
+  plies: "c.plies",
+  thickness: "c.thickness",
+  motif: "c.motif",
+  pays: "c.pays",
+};
+
+function pushAttribute(
+  where: string[],
+  params: unknown[],
+  key: keyof AvailabilityAttributeFilter,
+  value: string | undefined
+) {
+  if (typeof value !== "string") return;
+  const trimmed = value.trim();
+  if (!trimmed) return;
+  params.push(trimmed);
+  where.push(`${ATTRIBUTE_TO_COLUMN[key]} = $${params.length}`);
+}
+
 export async function findAvailableStockPieces(
-  stk_category_id: number,
-  longueur: number,
-  largeur: number,
-  atelier?: string | null,
-  allowedAteliers?: string[]
-): Promise<StockPiece[]> {
+  opts: FindAvailableStockPiecesOptions
+): Promise<AvailabilityBuckets> {
+  const {
+    longueur,
+    largeur,
+    atelier,
+    allowedAteliers,
+    nature,
+    color,
+    plies,
+    thickness,
+    motif,
+    pays,
+  } = opts;
+
   const params: unknown[] = [];
   const where: string[] = [
-    `s.stk_category_id = $${(params.push(stk_category_id), params.length)}`,
+    `s.type IN ('BO', 'CS', 'SI')`,
     `COALESCE(s.is_consumed, false) = false`,
     // The piece must fit the requested cut in at least one orientation, with
-    // enough remaining surface to cover the cut area.
-    `s.longueur >= GREATEST($${(params.push(longueur), params.length)}, $${(params.push(largeur), params.length)})`,
-    `s.largeur >= LEAST($${(params.length - 1)}, $${params.length})`,
+    // enough remaining surface to cover the cut area. Cast parameters to
+    // integer explicitly so PostgreSQL can infer the right type when these
+    // parameters are first encountered inside GREATEST/LEAST.
+    `s.longueur >= GREATEST($${(params.push(longueur), params.length)}::integer, $${(params.push(largeur), params.length)}::integer)`,
+    `s.largeur >= LEAST($${(params.length - 1)}::integer, $${params.length}::integer)`,
     `(s.surface_restante IS NULL OR s.surface_restante >= ($${(params.push(longueur), params.length)}::bigint * $${(params.push(largeur), params.length)}::bigint / 1000000))`,
   ];
+
+  pushAttribute(where, params, "nature", nature);
+  pushAttribute(where, params, "color", color);
+  pushAttribute(where, params, "plies", plies);
+  pushAttribute(where, params, "thickness", thickness);
+  pushAttribute(where, params, "motif", motif);
+  pushAttribute(where, params, "pays", pays);
 
   if (atelier) {
     params.push(atelier);
@@ -726,11 +800,22 @@ export async function findAvailableStockPieces(
        ${SUPPLIER_JOIN}
        ${COMMANDE_JOIN}
       WHERE ${where.join(" AND ")}
-      ORDER BY s.surface_restante DESC NULLS LAST, s.id DESC
-      LIMIT 50`,
+      ORDER BY s.surface_restante DESC NULLS LAST, s.id DESC`,
     params
   );
-  return rows.map((r) => mapPiece(r));
+
+  const buckets: AvailabilityBuckets = { bo: [], cs: [], si: [] };
+  for (const row of rows as Record<string, unknown>[]) {
+    const piece = mapPiece(row);
+    if (piece.type === "BO" && buckets.bo.length < BUCKET_LIMIT) {
+      buckets.bo.push(piece);
+    } else if (piece.type === "CS" && buckets.cs.length < BUCKET_LIMIT) {
+      buckets.cs.push(piece);
+    } else if (piece.type === "SI" && buckets.si.length < BUCKET_LIMIT) {
+      buckets.si.push(piece);
+    }
+  }
+  return buckets;
 }
 
 /**
