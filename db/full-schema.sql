@@ -272,6 +272,15 @@ ALTER TABLE public.albelt_stocks_categories
 
 
 -- ############################################################################
+-- SECTION 6b — 006b_add_pays_to_categories.sql
+-- ############################################################################
+-- Optional country of origin for a category (nullable).
+
+ALTER TABLE public.albelt_stocks_categories
+  ADD COLUMN IF NOT EXISTS pays character varying;
+
+
+-- ############################################################################
 -- SECTION 7 — 007_create_albelt_country.sql
 -- ############################################################################
 -- Countries reference table.

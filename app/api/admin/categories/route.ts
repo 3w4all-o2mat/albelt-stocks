@@ -12,6 +12,7 @@ import {
   PLIES_OPTIONS,
   THICKNESS_OPTIONS,
   MOTIF_OPTIONS,
+  PAYS_OPTIONS,
   isKnownCategoryField,
 } from "@/lib/bobine-category-options";
 import type { NewCategoryInput } from "@/lib/types";
@@ -23,6 +24,7 @@ const COLOR_LABELS = new Set(COLOR_OPTIONS.map((o) => o.label));
 const PLIES_LABELS = new Set(PLIES_OPTIONS.map((o) => o.label));
 const THICKNESS_LABELS = new Set(THICKNESS_OPTIONS.map((o) => o.label));
 const MOTIF_LABELS = new Set(MOTIF_OPTIONS.map((o) => o.label));
+const PAYS_LABELS = new Set(PAYS_OPTIONS.map((o) => o.label));
 
 export async function GET(req: Request) {
   const auth = await requireRole(req, ["master"]);
@@ -59,6 +61,10 @@ export async function POST(req: Request) {
   const plies = (body.plies ?? "").trim();
   const thickness = (body.thickness ?? "").trim();
   const motif = (body.motif ?? "").trim();
+  const paysRaw = body.pays;
+  const pays = paysRaw == null
+    ? null
+    : (typeof paysRaw === "string" ? paysRaw.trim() : String(paysRaw));
 
   if (!NATURE_LABELS.has(nature)) {
     return NextResponse.json(
@@ -90,9 +96,23 @@ export async function POST(req: Request) {
       { status: 400 }
     );
   }
+  if (pays !== null && pays !== "" && !PAYS_LABELS.has(pays)) {
+    return NextResponse.json(
+      { success: false, error: "Invalid pays" },
+      { status: 400 }
+    );
+  }
 
   const siActive = body.si_active === true;
-  const input: NewCategoryInput = { nature, color, plies, thickness, motif, si_active: siActive };
+  const input: NewCategoryInput = {
+    nature,
+    color,
+    plies,
+    thickness,
+    motif,
+    pays: pays === "" ? null : pays,
+    si_active: siActive,
+  };
 
   if (!isKnownCategoryField(input)) {
     return NextResponse.json(

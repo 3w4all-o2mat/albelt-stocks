@@ -8,6 +8,7 @@ export interface Category {
   plies: string;
   thickness: string;
   motif: string;
+  pays: string | null;
   si_active: boolean;
 }
 
@@ -17,6 +18,7 @@ export interface NewCategoryInput {
   plies: string;
   thickness: string;
   motif: string;
+  pays?: string | null;
   si_active?: boolean;
 }
 
@@ -26,6 +28,7 @@ export interface UpdateCategoryInput {
   plies?: string;
   thickness?: string;
   motif?: string;
+  pays?: string | null;
   si_active?: boolean;
 }
 

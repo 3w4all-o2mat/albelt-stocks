@@ -13,6 +13,7 @@ import {
   PLIES_OPTIONS,
   THICKNESS_OPTIONS,
   MOTIF_OPTIONS,
+  PAYS_OPTIONS,
 } from "@/lib/bobine-category-options";
 import type { UpdateCategoryInput } from "@/lib/types";
 
@@ -23,6 +24,7 @@ const COLOR_LABELS = new Set(COLOR_OPTIONS.map((o) => o.label));
 const PLIES_LABELS = new Set(PLIES_OPTIONS.map((o) => o.label));
 const THICKNESS_LABELS = new Set(THICKNESS_OPTIONS.map((o) => o.label));
 const MOTIF_LABELS = new Set(MOTIF_OPTIONS.map((o) => o.label));
+const PAYS_LABELS = new Set(PAYS_OPTIONS.map((o) => o.label));
 
 function validateField(
   field: keyof UpdateCategoryInput,
@@ -39,6 +41,8 @@ function validateField(
       return THICKNESS_LABELS.has(value) ? null : "Invalid thickness";
     case "motif":
       return MOTIF_LABELS.has(value) ? null : "Invalid motif";
+    case "pays":
+      return value === "" || PAYS_LABELS.has(value) ? null : "Invalid pays";
     default:
       return null;
   }
@@ -103,6 +107,7 @@ export async function PUT(
 
   for (const [field, value] of Object.entries(body)) {
     if (value === undefined) continue;
+    if (field === "pays" && value === null) continue; // null is allowed for nullable pays
     const err = validateField(field as keyof UpdateCategoryInput, String(value));
     if (err) {
       return NextResponse.json({ success: false, error: err }, { status: 400 });

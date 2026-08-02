@@ -11,6 +11,7 @@ interface CategoryRow {
   plies: string;
   thickness: string;
   motif: string;
+  pays: string | null;
   si_active: boolean;
 }
 
@@ -23,13 +24,14 @@ function toCategory(row: CategoryRow): Category {
     plies: String(row.plies ?? ""),
     thickness: String(row.thickness ?? ""),
     motif: String(row.motif ?? ""),
+    pays: row.pays == null ? null : String(row.pays),
     si_active: Boolean(row.si_active),
   };
 }
 
 export async function getAllCategories(): Promise<Category[]> {
   const rows = await query<CategoryRow>(
-    `SELECT id, name, nature, color, plies, thickness, motif, si_active
+    `SELECT id, name, nature, color, plies, thickness, motif, pays, si_active
      FROM albelt_stocks_categories
      ORDER BY name NULLS LAST, id ASC`
   );
@@ -38,7 +40,7 @@ export async function getAllCategories(): Promise<Category[]> {
 
 export async function findCategoryById(id: number): Promise<Category | null> {
   const row = await queryOne<CategoryRow>(
-    `SELECT id, name, nature, color, plies, thickness, motif, si_active
+    `SELECT id, name, nature, color, plies, thickness, motif, pays, si_active
        FROM albelt_stocks_categories
       WHERE id = $1
       LIMIT 1`,
@@ -70,7 +72,7 @@ export async function listCategories(
   if (search) {
     params.push(`%${search}%`);
     where.push(
-      `(name ILIKE $${params.length} OR nature ILIKE $${params.length} OR color ILIKE $${params.length} OR motif ILIKE $${params.length})`
+      `(name ILIKE $${params.length} OR nature ILIKE $${params.length} OR color ILIKE $${params.length} OR motif ILIKE $${params.length} OR pays ILIKE $${params.length})`
     );
   }
   const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
@@ -84,7 +86,7 @@ export async function listCategories(
   const offset = (page - 1) * pageSize;
   const limitParams = [...params, pageSize, offset];
   const rows = await query<CategoryRow>(
-    `SELECT id, name, nature, color, plies, thickness, motif, si_active
+    `SELECT id, name, nature, color, plies, thickness, motif, pays, si_active
        FROM albelt_stocks_categories
        ${whereSql}
        ORDER BY ${sort} ${order} NULLS LAST
@@ -96,15 +98,27 @@ export async function listCategories(
 }
 
 export async function isCategoryDuplicate(
-  input: { nature: string; color: string; plies: string; thickness: string; motif: string },
+  input: {
+    nature: string;
+    color: string;
+    plies: string;
+    thickness: string;
+    motif: string;
+    pays?: string | null;
+  },
   exceptId?: number
 ): Promise<boolean> {
+  const pays =
+    input.pays != null && String(input.pays).trim() !== ""
+      ? String(input.pays).trim()
+      : null;
   const row = await queryOne<{ id: number }>(
     `SELECT id FROM albelt_stocks_categories
       WHERE nature = $1 AND color = $2 AND plies = $3 AND thickness = $4 AND motif = $5
-        AND ($6::int IS NULL OR id <> $6)
+        AND pays IS NOT DISTINCT FROM $6
+        AND ($7::int IS NULL OR id <> $7)
       LIMIT 1`,
-    [input.nature, input.color, input.plies, input.thickness, input.motif, exceptId ?? null]
+    [input.nature, input.color, input.plies, input.thickness, input.motif, pays, exceptId ?? null]
   );
   return row != null;
 }
@@ -112,15 +126,19 @@ export async function isCategoryDuplicate(
 export async function createCategory(
   input: NewCategoryInput
 ): Promise<Category> {
-  const name = computeCategoryName(input);
+  const pays =
+    input.pays != null && String(input.pays).trim() !== ""
+      ? String(input.pays).trim()
+      : null;
+  const name = computeCategoryName({ ...input, pays });
   if (!name) throw new Error("Invalid category field values");
   const siActive = input.si_active ?? false;
   const row = await queryOne<CategoryRow>(
     `INSERT INTO albelt_stocks_categories
-        (name, nature, color, plies, thickness, motif, si_active, create_date, write_date)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
-     RETURNING id, name, nature, color, plies, thickness, motif, si_active`,
-    [name, input.nature, input.color, input.plies, input.thickness, input.motif, siActive]
+        (name, nature, color, plies, thickness, motif, pays, si_active, create_date, write_date)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
+     RETURNING id, name, nature, color, plies, thickness, motif, pays, si_active`,
+    [name, input.nature, input.color, input.plies, input.thickness, input.motif, pays, siActive]
   );
   if (!row) throw new Error("Failed to create category");
   return toCategory(row);
@@ -133,12 +151,20 @@ export async function updateCategory(
   const existing = await findCategoryById(id);
   if (!existing) return null;
 
+  const pays =
+    input.pays !== undefined
+      ? (input.pays != null && String(input.pays).trim() !== ""
+          ? String(input.pays).trim()
+          : null)
+      : existing.pays;
+
   const merged = {
     nature: input.nature ?? existing.nature,
     color: input.color ?? existing.color,
     plies: input.plies ?? existing.plies,
     thickness: input.thickness ?? existing.thickness,
     motif: input.motif ?? existing.motif,
+    pays,
   };
   const name = computeCategoryName(merged);
   if (!name) throw new Error("Invalid category field values");
@@ -148,10 +174,10 @@ export async function updateCategory(
   const row = await queryOne<CategoryRow>(
     `UPDATE albelt_stocks_categories
         SET name = $1, nature = $2, color = $3, plies = $4, thickness = $5, motif = $6,
-            si_active = $7, write_date = NOW()
-      WHERE id = $8
-     RETURNING id, name, nature, color, plies, thickness, motif, si_active`,
-    [name, merged.nature, merged.color, merged.plies, merged.thickness, merged.motif, siActive, id]
+            pays = $7, si_active = $8, write_date = NOW()
+      WHERE id = $9
+     RETURNING id, name, nature, color, plies, thickness, motif, pays, si_active`,
+    [name, merged.nature, merged.color, merged.plies, merged.thickness, merged.motif, pays, siActive, id]
   );
   return row ? toCategory(row) : null;
 }

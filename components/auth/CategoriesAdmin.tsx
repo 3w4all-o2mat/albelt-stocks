@@ -11,6 +11,7 @@ import {
   PLIES_OPTIONS,
   THICKNESS_OPTIONS,
   MOTIF_OPTIONS,
+  PAYS_OPTIONS,
   computeCategoryName,
 } from "@/lib/bobine-category-options";
 
@@ -156,6 +157,7 @@ export function CategoriesAdmin() {
               <th className="px-4 py-3">Plies</th>
               <th className="px-4 py-3">Thickness</th>
               <th className="px-4 py-3">Motif</th>
+              <th className="px-4 py-3">Pays</th>
               <th className="px-4 py-3">SI Active</th>
               <th className="px-4 py-3 text-right">Actions</th>
             </tr>
@@ -163,13 +165,13 @@ export function CategoriesAdmin() {
           <tbody className="divide-y divide-slate-100">
             {loading ? (
               <tr>
-                <td colSpan={9} className="px-4 py-8 text-center text-slate-500">
+                <td colSpan={10} className="px-4 py-8 text-center text-slate-500">
                   Loading…
                 </td>
               </tr>
             ) : items.length === 0 ? (
               <tr>
-                <td colSpan={9} className="px-4 py-8 text-center text-slate-500">
+                <td colSpan={10} className="px-4 py-8 text-center text-slate-500">
                   No categories found.{" "}
                   <button
                     onClick={openCreate}
@@ -193,6 +195,7 @@ export function CategoriesAdmin() {
                   <td className="px-4 py-3 text-slate-700">{c.plies}</td>
                   <td className="px-4 py-3 text-slate-700">{c.thickness}</td>
                   <td className="px-4 py-3 text-slate-700">{c.motif}</td>
+                  <td className="px-4 py-3 text-slate-700">{c.pays || "—"}</td>
                   <td className="px-4 py-3">
                     <span
                       className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
@@ -296,13 +299,14 @@ function CategoryModal({
     category?.thickness ?? THICKNESS_OPTIONS[0].label
   );
   const [motif, setMotif] = useState(category?.motif ?? MOTIF_OPTIONS[0].label);
+  const [pays, setPays] = useState(category?.pays ?? "");
   const [siActive, setSiActive] = useState(category?.si_active ?? false);
   const [err, setErr] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const computedName = useMemo(
-    () => computeCategoryName({ nature, color, plies, thickness, motif }),
-    [nature, color, plies, thickness, motif]
+    () => computeCategoryName({ nature, color, plies, thickness, motif, pays }),
+    [nature, color, plies, thickness, motif, pays]
   );
 
   async function submit(e: React.FormEvent) {
@@ -314,6 +318,7 @@ function CategoryModal({
     }
     setSaving(true);
     try {
+      const paysValue: string | null = pays.trim() === "" ? null : pays;
       if (isEdit && category) {
         const body: UpdateCategoryInput = {
           nature,
@@ -321,6 +326,7 @@ function CategoryModal({
           plies,
           thickness,
           motif,
+          pays: paysValue,
           si_active: siActive,
         };
         const res = await fetch(`/api/admin/categories/${category.id}`, {
@@ -335,7 +341,15 @@ function CategoryModal({
         }
         onSaved();
       } else {
-        const body: NewCategoryInput = { nature, color, plies, thickness, motif, si_active: siActive };
+        const body: NewCategoryInput = {
+          nature,
+          color,
+          plies,
+          thickness,
+          motif,
+          pays: paysValue,
+          si_active: siActive,
+        };
         const res = await fetch("/api/admin/categories", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -428,7 +442,7 @@ function CategoryModal({
                 ))}
               </Select>
             </div>
-            <div className="space-y-1.5 sm:col-span-2">
+            <div className="space-y-1.5">
               <Label htmlFor="c-motif">Motif</Label>
               <Select
                 id="c-motif"
@@ -436,6 +450,21 @@ function CategoryModal({
                 onChange={(e) => setMotif(e.target.value)}
               >
                 {MOTIF_OPTIONS.map((o) => (
+                  <option key={o.label} value={o.label}>
+                    {o.label}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="c-pays">Pays</Label>
+              <Select
+                id="c-pays"
+                value={pays}
+                onChange={(e) => setPays(e.target.value)}
+              >
+                <option value="">—</option>
+                {PAYS_OPTIONS.map((o) => (
                   <option key={o.label} value={o.label}>
                     {o.label}
                   </option>
