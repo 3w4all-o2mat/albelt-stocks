@@ -85,6 +85,7 @@ export const MOTIF_OPTIONS: CategoryOption[] = [
   { label: "Nid d'abeille", code: "SG" },
   { label: "ND", code: "ND" },
   { label: "LIS", code: "LIS" },
+  { label: "Sablé", code: "SAB" },
   { label: "Mate", code: "MAT" },
   { label: "Diamond", code: "DIA" },
   { label: "CD", code: "GD" },
@@ -96,8 +97,7 @@ export const MOTIF_OPTIONS: CategoryOption[] = [
   { label: "SB", code: "SB" },
   { label: "Hanvr Bandi", code: "HB" },
   { label: "SBAG", code: "SBAG" },
-  // Legacy labels
-  { label: "Maté", code: "M" },
+
 ];
 
 export const PAYS_OPTIONS: CategoryOption[] = [
