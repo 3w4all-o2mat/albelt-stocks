@@ -14,12 +14,11 @@ export interface CategoryOption {
 export const NATURE_OPTIONS: CategoryOption[] = [
   { label: "Pvc", code: "PVC" },
   { label: "Polyuréthane", code: "PU" },
+  { label: "Polyuréthane Forbo", code: "PUF" },
   { label: "Caoutchouc", code: "CAO" },
   { label: "Courroies", code: "COR" },
   { label: "Bavettes", code: "BAV" },
-  // Legacy labels (pre-formalisation) — kept so existing rows stay editable
-  // and their computed name matches the stored value exactly.
-  { label: "Polystere", code: "POL" },
+
 ];
 
 export const COLOR_OPTIONS: CategoryOption[] = [
@@ -28,10 +27,7 @@ export const COLOR_OPTIONS: CategoryOption[] = [
   { label: "Bleu", code: "B" },
   { label: "Blanc", code: "BLANC" },
   { label: "Noire", code: "NR" },
-  // Legacy labels
-  { label: "White", code: "W" },
-  { label: "Jaune", code: "J" },
-  { label: "Vert", code: "V" },
+
 ];
 
 export const PLIES_OPTIONS: CategoryOption[] = [
@@ -40,10 +36,7 @@ export const PLIES_OPTIONS: CategoryOption[] = [
   { label: "3 Plies", code: "3P" },
   { label: "4 Plies", code: "4P" },
   { label: "5 Plies", code: "5P" },
-  // Legacy labels
-  { label: "2p", code: "2p" },
-  { label: "3p", code: "3p" },
-  { label: "4p", code: "4p" },
+
 ];
 
 export const THICKNESS_OPTIONS: CategoryOption[] = [
@@ -52,6 +45,7 @@ export const THICKNESS_OPTIONS: CategoryOption[] = [
   { label: "0.9 mm", code: "0.9" },
   { label: "1.0 mm", code: "1.0" },
   { label: "1.1 mm", code: "1.1" },
+  { label: "1.15 mm", code: "1.15" },
   { label: "1.2 mm", code: "1.2" },
   { label: "1.3 mm", code: "1.3" },
   { label: "1.4 mm", code: "1.4" },
@@ -84,9 +78,7 @@ export const THICKNESS_OPTIONS: CategoryOption[] = [
   { label: "15 mm", code: "15" },
   { label: "16 mm", code: "16" },
   { label: "20 mm", code: "20" },
-  // Legacy labels
-  { label: "2mm", code: "2" },
-  { label: "3mm", code: "3" },
+
 ];
 
 export const MOTIF_OPTIONS: CategoryOption[] = [
@@ -94,6 +86,7 @@ export const MOTIF_OPTIONS: CategoryOption[] = [
   { label: "ND", code: "ND" },
   { label: "LIS", code: "LIS" },
   { label: "Mate", code: "MAT" },
+  { label: "Diamond", code: "DIA" },
   { label: "CD", code: "GD" },
   { label: "SD", code: "SD" },
   { label: "LG", code: "LG" },
