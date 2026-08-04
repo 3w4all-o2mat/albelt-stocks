@@ -111,7 +111,7 @@ export default async function SIDetailPage({
                           {c.name ?? `#${c.id}`}
                           {c.type === "CS" && (
                             <Link
-                              href={`/falls/${c.id}`}
+                              href={`/cs/${c.id}`}
                               className="shrink-0 text-[0.7rem] text-cc hover:underline"
                             >
                               Ouvrir →

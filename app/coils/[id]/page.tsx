@@ -167,7 +167,7 @@ export default async function CoilDetailPage({
                       <div className="flex items-center justify-end gap-2">
                         {c.type === "CS" && (
                           <Link
-                            href={`/falls/${c.id}`}
+                            href={`/cs/${c.id}`}
                             className="text-xs text-cc hover:underline"
                           >
                             Ouvrir →

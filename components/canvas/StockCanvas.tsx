@@ -82,7 +82,7 @@ export function StockCanvas({
 
   function handleClick(piece: StockPiece) {
     if (piece.type === "CS") {
-      router.push(`/falls/${piece.id}`);
+      router.push(`/cs/${piece.id}`);
     } else if (piece.type === "BO") {
       router.push(`/coils/${piece.id}`);
     }

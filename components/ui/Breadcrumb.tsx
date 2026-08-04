@@ -31,7 +31,7 @@ export function Breadcrumb({
     >
       {ancestors.map((a, i) => {
         const isLast = i === ancestors.length - 1;
-        const base = a.type === "BO" ? `/coils/${a.id}` : `/falls/${a.id}`;
+        const base = a.type === "BO" ? `/coils/${a.id}` : `/cs/${a.id}`;
         const href = buildHref(base, query);
         return (
           <span key={a.id} className="flex items-center gap-1">

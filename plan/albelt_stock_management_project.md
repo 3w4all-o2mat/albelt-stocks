@@ -514,7 +514,7 @@ Both views use the **same `StockCanvas` component** — only the root piece diff
 - Draws all direct children of the BO
 - Grey overlay for uncut zones
 
-**CS Canvas** (`/falls/[id]`)
+**CS Canvas** (`/cs/[id]`)
 - Root rectangle = the CS (`longueur × largeur`)
 - Draws all direct children of that CS
 - Breadcrumb navigation showing full ancestry via `chained_name`
@@ -540,7 +540,7 @@ Both views use the **same `StockCanvas` component** — only the root piece diff
 - Side panel: list of all children (CC, CS, CP) with details
 - Button: **Record a new cut on this BO**
 
-### 12.4 Fall Detail (`/falls/[id]`)
+### 12.4 Fall Detail (`/cs/[id]`)
 - Same structure as Coil Detail but rooted on a CS
 - **Breadcrumb** from `chained_name`: `BO-001 › CS-003 › CS-007`
 - **2D Konva canvas** with all direct cuts placed on this CS
@@ -601,6 +601,6 @@ Both views use the **same `StockCanvas` component** — only the root piece diff
 11. 🔲 Build `StockCanvas` component (Konva)
 12. 🔲 Build Coil Detail page with canvas (`/coils/[id]`)
 13. 🔲 Build New Cut form with live preview
-14. 🔲 Build Fall Detail page with canvas (`/falls/[id]`)
+14. 🔲 Build Fall Detail page with canvas (`/cs/[id]`)
 15. 🔲 Build Dashboard with KPIs
 16. 🔲 Testing & validation with real data

@@ -179,7 +179,7 @@ export function NewCutForm() {
       await queryClient.invalidateQueries({ queryKey: ["piece", sourceId] });
       await queryClient.invalidateQueries({ queryKey: ["children", sourceId] });
       const redirectPath =
-        source?.type === "CS" ? `/falls/${sourceId}` : `/coils/${sourceId}`;
+        source?.type === "CS" ? `/cs/${sourceId}` : `/coils/${sourceId}`;
       // Full navigation to force a fresh server render after the DB update
       window.location.href = redirectPath;
     },

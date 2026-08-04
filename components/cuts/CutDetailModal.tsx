@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useCallback } from "react";
-import { X, Printer } from "lucide-react";
+import Link from "next/link";
+import { X, Printer, ExternalLink } from "lucide-react";
 import QRCode from "qrcode";
 import type { StockPiece, Category } from "@/lib/types";
 import { formatDimensions, formatSurface, formatDate } from "@/lib/utils";
@@ -79,12 +80,14 @@ export default function CutDetailModal({
               ? "border-orange-700 bg-orange-600"
               : cut.type === "BO"
               ? "border-purple-700 bg-purple-600"
+              : cut.type === "SI"
+              ? "border-green-700 bg-green-600"
               : "border-slate-200"
           }`}
         >
           <h2
             className={`text-lg font-semibold ${
-              cut.type === "CC" || cut.type === "CP" || cut.type === "CS" || cut.type === "BO" ? "text-white" : "text-slate-900"
+              cut.type === "CC" || cut.type === "CP" || cut.type === "CS" || cut.type === "BO" || cut.type === "SI" ? "text-white" : "text-slate-900"
             }`}
           >
             {cut.name ?? `#${cut.id}`}
@@ -100,6 +103,8 @@ export default function CutDetailModal({
                 ? "text-orange-100 hover:bg-orange-500 hover:text-white"
                 : cut.type === "BO"
                 ? "text-purple-100 hover:bg-purple-500 hover:text-white"
+                : cut.type === "SI"
+                ? "text-green-100 hover:bg-green-500 hover:text-white"
                 : "text-slate-400 hover:bg-slate-100 hover:text-slate-600"
             }`}
           >
@@ -203,23 +208,52 @@ export default function CutDetailModal({
         </div>
 
         {/* Footer with print buttons */}
-        <div className="flex items-center justify-end gap-3 border-t border-slate-200 px-6 py-3">
-          {!hideDeliveryButton && (
+        <div className="flex items-center justify-between gap-3 border-t border-slate-200 px-6 py-3">
+          {cut.type === "CS" ? (
+            <Link
+              href={`/cs/${cut.id}`}
+              className="inline-flex items-center gap-2 rounded-md border border-orange-700 bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-700 transition-colors"
+            >
+              <ExternalLink className="h-4 w-4" />
+              Voir détails
+            </Link>
+          ) : cut.type === "SI" ? (
+            <Link
+              href={`/si/${cut.id}`}
+              className="inline-flex items-center gap-2 rounded-md border border-green-700 bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 transition-colors"
+            >
+              <ExternalLink className="h-4 w-4" />
+              Voir détails
+            </Link>
+          ) : cut.type === "BO" ? (
+            <Link
+              href={`/coils/${cut.id}`}
+              className="inline-flex items-center gap-2 rounded-md border border-purple-700 bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 transition-colors"
+            >
+              <ExternalLink className="h-4 w-4" />
+              Voir détails
+            </Link>
+          ) : (
+            <span />
+          )}
+          <div className="flex items-center gap-3">
+            {!hideDeliveryButton && (
+              <button
+                onClick={() => printDeliveryLabel(cut, category)}
+                className="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+              >
+                <Printer className="h-4 w-4" />
+                Imprimer l&apos;étiquette de livraison
+              </button>
+            )}
             <button
-              onClick={() => printDeliveryLabel(cut, category)}
-              className="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+              onClick={() => printLabel(cut, category)}
+              className="inline-flex items-center gap-2 rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 transition-colors"
             >
               <Printer className="h-4 w-4" />
-              Imprimer l&apos;étiquette de livraison
+              Imprimer l&apos;étiquette de stockage
             </button>
-          )}
-          <button
-            onClick={() => printLabel(cut, category)}
-            className="inline-flex items-center gap-2 rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 transition-colors"
-          >
-            <Printer className="h-4 w-4" />
-            Imprimer l&apos;étiquette de stockage
-          </button>
+          </div>
         </div>
       </div>
     </div>
