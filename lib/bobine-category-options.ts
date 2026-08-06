@@ -90,6 +90,7 @@ export const MOTIF_OPTIONS: CategoryOption[] = [
   { label: "Mate", code: "MAT" },
   { label: "Diamond", code: "DIA" },
   { label: "GOLF", code: "GO" },
+  { label: "Grezeus", code: "GRZ" },
   { label: "SD", code: "SD" },
   { label: "LG", code: "LG" },
   { label: "VD", code: "VD" },
