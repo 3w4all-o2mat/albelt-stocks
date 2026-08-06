@@ -6,7 +6,7 @@ import type { PieceType } from "@/lib/types";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
-  const auth = await requireRole(req, ["master"]);
+  const auth = await requireRole(req, ["master", "manager"]);
   if (auth instanceof NextResponse) return auth;
 
   const url = new URL(req.url);

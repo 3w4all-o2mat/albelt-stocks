@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LayoutDashboard, Users, Factory, ArrowLeftRight, Layers, ScrollText, SlidersHorizontal, Globe, Truck, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ADMIN_ROUTES_BY_ROLE } from "@/lib/auth/admin-routes";
 
 type NavItem = {
   href: string;
@@ -24,8 +25,10 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/admin/label-design", label: "Etiquettes", icon: FileText },
 ];
 
-export function AdminSidebar() {
+export function AdminSidebar({ role }: { role: "master" | "manager" }) {
   const pathname = usePathname();
+  const allowedRoutes = new Set(ADMIN_ROUTES_BY_ROLE[role] ?? []);
+  const visibleItems = NAV_ITEMS.filter((item) => allowedRoutes.has(item.href));
 
   return (
     <aside className="w-56 shrink-0 border-r border-slate-200 bg-white">
@@ -42,7 +45,7 @@ export function AdminSidebar() {
 
       <nav className="px-2 pb-4">
         <ul className="space-y-1">
-          {NAV_ITEMS.map((item) => {
+          {visibleItems.map((item) => {
             const active =
               pathname === item.href || pathname.startsWith(`${item.href}/`);
             const Icon = item.icon;

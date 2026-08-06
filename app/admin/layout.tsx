@@ -11,11 +11,13 @@ export default async function AdminLayout({
 }) {
   const session = await getCurrentUser();
   if (!session) redirect("/login?next=/admin");
-  if (session.role !== "master") redirect("/dashboard");
+  if (session.role !== "master" && session.role !== "manager") {
+    redirect("/dashboard");
+  }
 
   return (
     <div className="mx-auto flex max-w-7xl flex-1 px-4 py-2">
-      <AdminSidebar />
+      <AdminSidebar role={session.role} />
       <div className="min-w-0 flex-1 pl-6">{children}</div>
     </div>
   );

@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/auth/current-user";
 import { findUserById } from "@/lib/queries/membership";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 import { RoleBadge } from "@/components/ui/RoleBadge";
+import { ADMIN_DEFAULT_ROUTE } from "@/lib/auth/admin-routes";
 
 const APP_LINKS = [
   { href: "/dashboard", label: "Tableau de bord" },
@@ -14,6 +15,12 @@ export async function NavBar() {
   const user = await getCurrentUser();
   const profile = user ? await findUserById(user.id) : null;
   const displayName = profile?.full_name?.trim() || user?.username || "";
+  const canSeeAdmin =
+    user?.role === "master" || user?.role === "manager";
+  const adminHref =
+    user?.role === "master" || user?.role === "manager"
+      ? ADMIN_DEFAULT_ROUTE[user.role]
+      : "/admin";
 
   return (
     <header className="border-b border-slate-200 bg-white">
@@ -47,9 +54,9 @@ export async function NavBar() {
                     {l.label}
                   </Link>
                 ))}
-                {user.role === "master" && (
+                {canSeeAdmin && (
                   <Link
-                    href="/admin/users"
+                    href={adminHref}
                     className={cn(
                       "rounded-md px-3 py-1.5 text-sm font-medium text-slate-600",
                       "hover:bg-slate-100 hover:text-slate-900 transition-colors"

@@ -10,7 +10,7 @@ export async function PATCH(
   req: Request,
   { params }: { params: { id: string } }
 ) {
-  const auth = await requireRole(req, ["master"]);
+  const auth = await requireRole(req, ["master", "manager"]);
   if (auth instanceof NextResponse) return auth;
 
   const id = Number(params.id);

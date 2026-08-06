@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { jwtVerify } from "jose";
+import { ADMIN_DEFAULT_ROUTE, isAdminRouteAllowed } from "@/lib/auth/admin-routes";
 
 const COOKIE_NAME = "albelt_session";
 const ISSUER = "albelt-stocks";
@@ -68,14 +69,25 @@ export async function middleware(req: NextRequest) {
 
   // Role-based protection for admin routes.
   if (pathname.startsWith("/admin") || pathname.startsWith("/api/admin")) {
-    if (!user || user.role !== "master") {
-      if (req.headers.get("accept")?.includes("application/json")) {
+    if (!user || (user.role !== "master" && user.role !== "manager")) {
+      if (pathname.startsWith("/api/admin")) {
         return NextResponse.json(
           { success: false, error: "Insufficient permissions" },
           { status: 403 }
         );
       }
       return NextResponse.redirect(new URL("/dashboard", req.url));
+    }
+    if (!isAdminRouteAllowed(pathname, user.role)) {
+      if (pathname.startsWith("/api/admin")) {
+        return NextResponse.json(
+          { success: false, error: "Insufficient permissions" },
+          { status: 403 }
+        );
+      }
+      return NextResponse.redirect(
+        new URL(ADMIN_DEFAULT_ROUTE[user.role], req.url)
+      );
     }
   }
 

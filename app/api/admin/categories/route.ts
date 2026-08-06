@@ -27,7 +27,7 @@ const MOTIF_LABELS = new Set(MOTIF_OPTIONS.map((o) => o.label));
 const PAYS_LABELS = new Set(PAYS_OPTIONS.map((o) => o.label));
 
 export async function GET(req: Request) {
-  const auth = await requireRole(req, ["master"]);
+  const auth = await requireRole(req, ["master", "manager"]);
   if (auth instanceof NextResponse) return auth;
 
   const url = new URL(req.url);
@@ -43,7 +43,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const auth = await requireRole(req, ["master"]);
+  const auth = await requireRole(req, ["master", "manager"]);
   if (auth instanceof NextResponse) return auth;
 
   let body: Partial<NewCategoryInput>;
