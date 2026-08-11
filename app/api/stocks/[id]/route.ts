@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth/guard";
 import { deletePiece, getChildren, getPieceById } from "@/lib/queries/stocks";
+import { getIntegerVariable } from "@/lib/queries/variables";
 
 export const dynamic = "force-dynamic";
 
@@ -43,6 +44,11 @@ export async function DELETE(
       return NextResponse.json({ error: "Invalid id" }, { status: 400 });
     }
 
+    const piece = await getPieceById(id);
+    if (!piece) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
     // Check if the piece has children before allowing deletion
     const children = await getChildren(id);
     if (children.length > 0) {
@@ -52,6 +58,31 @@ export async function DELETE(
         },
         { status: 409 }
       );
+    }
+
+    // Only a "master" can delete any row, whatever its type, at any time.
+    // Other roles may only delete their own rows within the deletion window.
+    const isMaster = auth.user.role === "master";
+    if (!isMaster) {
+      const isOwner = piece.user_id != null && piece.user_id === auth.user.id;
+      if (!isOwner) {
+        return NextResponse.json(
+          { error: "Vous n'êtes pas autorisé à supprimer cette pièce" },
+          { status: 403 }
+        );
+      }
+      if (piece.create_date) {
+        const deleteHours = await getIntegerVariable("DELETE_OPERATION_HOURS");
+        const diffHours =
+          (Date.now() - new Date(piece.create_date).getTime()) /
+          (1000 * 60 * 60);
+        if (deleteHours != null && diffHours > deleteHours) {
+          return NextResponse.json(
+            { error: "La fenêtre de suppression est dépassée" },
+            { status: 403 }
+          );
+        }
+      }
     }
 
     await deletePiece(id);

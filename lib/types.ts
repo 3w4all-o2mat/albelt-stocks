@@ -163,6 +163,8 @@ export interface StockBase {
   supplier_id?: number | null;
   supplier?: Supplier;
   year?: number | null;
+  /** Number of direct descendants (child rows) in albelt_stocks. */
+  children_count?: number | null;
 }
 
 export interface BO extends StockBase {

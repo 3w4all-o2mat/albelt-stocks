@@ -6,12 +6,21 @@ import { Cylinder } from "lucide-react";
 import type { BO } from "@/lib/types";
 import { formatDimensions, formatSurface } from "@/lib/utils";
 import CutDetailModal from "./CutDetailModal";
+import DeleteOperationButton from "@/components/dashboard/DeleteOperationButton";
 
 interface CoilsTableProps {
   bos: BO[];
+  deleteHours: number;
+  userId: number;
+  userRole: "master" | "manager" | "user";
 }
 
-export default function CoilsTable({ bos }: CoilsTableProps) {
+export default function CoilsTable({
+  bos,
+  deleteHours,
+  userId,
+  userRole,
+}: CoilsTableProps) {
   const [selectedBo, setSelectedBo] = useState<BO | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -40,12 +49,13 @@ export default function CoilsTable({ bos }: CoilsTableProps) {
               <th className="px-5 py-3 text-center">Surface totale</th>
               <th className="px-5 py-3 text-center">Surface restante</th>
               <th className="px-5 py-3 text-center">État</th>
+              <th className="px-2 py-3 text-center w-10"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {bos.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-5 py-8 text-center text-slate-500">
+                <td colSpan={10} className="px-5 py-8 text-center text-slate-500">
                   Aucune bobine pour le moment.
                 </td>
               </tr>
@@ -103,6 +113,17 @@ export default function CoilsTable({ bos }: CoilsTableProps) {
                       Active
                     </span>
                   )}
+                </td>
+                <td className="px-2 py-3 text-center">
+                  <DeleteOperationButton
+                    id={bo.id}
+                    create_date={bo.create_date}
+                    deleteHours={deleteHours}
+                    creatorId={bo.user_id}
+                    userId={userId}
+                    userRole={userRole}
+                    hasChildren={(bo.children_count ?? 0) > 0}
+                  />
                 </td>
               </tr>
             ))}

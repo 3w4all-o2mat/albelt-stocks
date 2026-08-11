@@ -77,6 +77,8 @@ function mapPiece(row: Record<string, unknown>): StockPiece {
     supplier_id: row.supplier_id == null ? null : Number(row.supplier_id),
     supplier,
     year: row.year == null ? null : Number(row.year),
+    children_count:
+      row.children_count == null ? null : Number(row.children_count),
   } as StockPiece;
 }
 
@@ -100,6 +102,15 @@ const SUPPLIER_COLS = `
   supc.name_fr AS sup_country_name,
   sup.is_active AS sup_is_active,
   sup.date_creation AS sup_date_creation
+`;
+
+const MEMBERSHIP_JOIN = `
+  LEFT JOIN albelt_membership m ON s.user_id = m.id
+`;
+
+const MEMBERSHIP_COLS = `
+  m.full_name AS user_full_name,
+  m.username AS user_username
 `;
 
 const COMMANDE_JOIN = `
@@ -177,10 +188,12 @@ export async function getAllBOs(
     }
   }
   const rows = await query(
-    `SELECT s.*, ${CATEGORY_COLS}, ${SUPPLIER_COLS}
+    `SELECT s.*, ${CATEGORY_COLS}, ${SUPPLIER_COLS}, ${MEMBERSHIP_COLS},
+            (SELECT COUNT(*) FROM albelt_stocks c WHERE c.parent_id = s.id) AS children_count
      FROM albelt_stocks s
      ${CATEGORY_JOIN}
      ${SUPPLIER_JOIN}
+     ${MEMBERSHIP_JOIN}
      WHERE ${where.join(" AND ")}
      ORDER BY s.create_date DESC NULLS LAST, s.id DESC`,
     params
@@ -190,11 +203,12 @@ export async function getAllBOs(
 
 export async function getPieceById(id: number): Promise<StockPiece | null> {
   const row = await queryOne(
-    `SELECT s.*, ${CATEGORY_COLS}, ${SUPPLIER_COLS}, ${COMMANDE_COLS}
+    `SELECT s.*, ${CATEGORY_COLS}, ${SUPPLIER_COLS}, ${COMMANDE_COLS}, ${MEMBERSHIP_COLS}
      FROM albelt_stocks s
      ${CATEGORY_JOIN}
      ${SUPPLIER_JOIN}
      ${COMMANDE_JOIN}
+     ${MEMBERSHIP_JOIN}
      WHERE s.id = $1`,
     [id]
   );
@@ -203,12 +217,12 @@ export async function getPieceById(id: number): Promise<StockPiece | null> {
 
 export async function getChildren(parentId: number): Promise<StockPiece[]> {
   const rows = await query(
-    `SELECT s.*, ${CATEGORY_COLS}, ${SUPPLIER_COLS}, ${COMMANDE_COLS}, m.full_name AS user_full_name, m.username AS user_username
+    `SELECT s.*, ${CATEGORY_COLS}, ${SUPPLIER_COLS}, ${COMMANDE_COLS}, ${MEMBERSHIP_COLS}
      FROM albelt_stocks s
      ${CATEGORY_JOIN}
      ${SUPPLIER_JOIN}
      ${COMMANDE_JOIN}
-     LEFT JOIN albelt_membership m ON s.user_id = m.id
+     ${MEMBERSHIP_JOIN}
      WHERE s.parent_id = $1
      ORDER BY s.id DESC`,
     [parentId]
@@ -249,10 +263,11 @@ export async function getRecentCuts(
   }
   params.push(limit);
   const rows = await query(
-    `SELECT s.*, ${CATEGORY_COLS}, ${COMMANDE_COLS}
+    `SELECT s.*, ${CATEGORY_COLS}, ${COMMANDE_COLS}, ${MEMBERSHIP_COLS}
      FROM albelt_stocks s
      ${CATEGORY_JOIN}
      ${COMMANDE_JOIN}
+     ${MEMBERSHIP_JOIN}
      WHERE ${where.join(" AND ")}
      ORDER BY s.create_date DESC NULLS LAST, s.id DESC
      LIMIT $${params.length}`,
@@ -295,10 +310,11 @@ export async function getCutsByType(
     where.push(`cl.name ILIKE $${params.length}`);
   }
   const rows = await query(
-    `SELECT s.*, ${CATEGORY_COLS}, ${COMMANDE_COLS}
+    `SELECT s.*, ${CATEGORY_COLS}, ${COMMANDE_COLS}, ${MEMBERSHIP_COLS}
      FROM albelt_stocks s
      ${CATEGORY_JOIN}
      ${COMMANDE_JOIN}
+     ${MEMBERSHIP_JOIN}
      WHERE ${where.join(" AND ")}
      ORDER BY s.create_date DESC NULLS LAST, s.id DESC`,
     params
@@ -846,11 +862,12 @@ export async function listAllStocks(opts: {
   const total = totalRow ? Number(totalRow.count) : 0;
 
   const rows = await query(
-    `SELECT s.*, ${CATEGORY_COLS}, ${SUPPLIER_COLS}, ${COMMANDE_COLS}
+    `SELECT s.*, ${CATEGORY_COLS}, ${SUPPLIER_COLS}, ${COMMANDE_COLS}, ${MEMBERSHIP_COLS}
        FROM albelt_stocks s
        ${CATEGORY_JOIN}
        ${SUPPLIER_JOIN}
        ${COMMANDE_JOIN}
+       ${MEMBERSHIP_JOIN}
        ${whereSql}
        ORDER BY s.create_date DESC NULLS LAST, s.id DESC
        LIMIT $${(params.push(pageSize), params.length)} OFFSET $${(params.push(offset), params.length)}`,

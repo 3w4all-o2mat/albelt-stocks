@@ -3,6 +3,7 @@ import { Plus, ChevronDown, Filter } from "lucide-react";
 import { requirePageAuth } from "@/lib/auth/guard";
 import { getAllBOs, getDistinctBOYears } from "@/lib/queries/stocks";
 import { getAllCategories } from "@/lib/queries/categories";
+import { getIntegerVariable } from "@/lib/queries/variables";
 import { listAteliersForUser } from "@/lib/queries/ateliers";
 import { listActiveSuppliers } from "@/lib/queries/suppliers";
 import { listCountries } from "@/lib/queries/countries";
@@ -68,21 +69,23 @@ export default async function CoilsPage({
   const country = searchParams?.country?.trim() || null;
   const year = searchParams?.year?.trim() || null;
 
-  const [bos, categories, suppliers, countries, years] = await Promise.all([
-    getAllBOs(atelier, consumed, allowedNames, {
-      nature: nature ?? undefined,
-      color: color ?? undefined,
-      plies: plies ?? undefined,
-      thickness: thickness ?? undefined,
-      supplierId: supplier ? Number(supplier) : undefined,
-      countryCode: country ?? undefined,
-      year: year ? Number(year) : undefined,
-    }),
-    getAllCategories(),
-    listActiveSuppliers(),
-    listCountries(),
-    getDistinctBOYears(),
-  ]);
+  const [bos, categories, suppliers, countries, years, deleteHours] =
+    await Promise.all([
+      getAllBOs(atelier, consumed, allowedNames, {
+        nature: nature ?? undefined,
+        color: color ?? undefined,
+        plies: plies ?? undefined,
+        thickness: thickness ?? undefined,
+        supplierId: supplier ? Number(supplier) : undefined,
+        countryCode: country ?? undefined,
+        year: year ? Number(year) : undefined,
+      }),
+      getAllCategories(),
+      listActiveSuppliers(),
+      listCountries(),
+      getDistinctBOYears(),
+      getIntegerVariable("DELETE_OPERATION_HOURS"),
+    ]);
   const ateliers = allowedAteliers;
 
   // Build dropdown option lists
@@ -163,7 +166,12 @@ export default async function CoilsPage({
 
       <Card className="mt-6">
         <CardHeader title="Toutes les bobines" subtitle="Cliquez pour ouvrir le détail et le canvas 2D" titleClassName="text-purple-500" />
-        <CoilsTable bos={bos} />
+        <CoilsTable
+          bos={bos}
+          deleteHours={deleteHours ?? 12}
+          userId={user.id}
+          userRole={user.role}
+        />
       </Card>
 
       {categories.length > 0 && (

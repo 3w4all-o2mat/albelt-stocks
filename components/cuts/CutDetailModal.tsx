@@ -60,6 +60,11 @@ export default function CutDetailModal({
 
   const category = cut.category as Category | undefined;
 
+  const userName =
+    cut.user_full_name ??
+    cut.user_username ??
+    (cut.user_id != null ? `#${cut.user_id}` : null);
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
@@ -129,6 +134,7 @@ export default function CutDetailModal({
                   <DetailRow label="Nom" value={cut.name} />
                   <DetailRow label="Atelier" value={cut.atelier} />
                   <DetailRow label="Créé le" value={formatDate(cut.create_date)} />
+                  <DetailRow label="Utilisateur" value={userName} />
                 </div>
               </div>
 

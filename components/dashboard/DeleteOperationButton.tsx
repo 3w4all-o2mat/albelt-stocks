@@ -10,6 +10,7 @@ export default function DeleteOperationButton({
   creatorId,
   userId,
   userRole,
+  hasChildren = false,
 }: {
   id: number;
   create_date: string | null;
@@ -17,18 +18,28 @@ export default function DeleteOperationButton({
   creatorId: number | null;
   userId: number;
   userRole: "master" | "manager" | "user";
+  hasChildren?: boolean;
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
-  if (!create_date) return null;
+  // A used coil (a row with at least one descendant) can never be deleted,
+  // whatever the role.
+  if (hasChildren) return null;
 
-  const created = new Date(create_date);
+  // Rows without a creation date can only be deleted by a master.
+  if (!create_date && userRole !== "master") return null;
+
+  const created = new Date(create_date ?? 0);
   const now = new Date();
   const diffHours = (now.getTime() - created.getTime()) / (1000 * 60 * 60);
 
   const isAllowed = userRole === "master" || creatorId === userId;
-  if (!isAllowed || diffHours > deleteHours) return null;
+  if (!isAllowed) return null;
+
+  // Master can delete any row, whatever its type, at any time.
+  // Other roles are limited to the deletion window.
+  if (userRole !== "master" && diffHours > deleteHours) return null;
 
   const handleDelete = async () => {
     if (!confirm("Supprimer cette opération ?")) return;
