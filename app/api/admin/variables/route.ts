@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireRole } from "@/lib/auth/guard";
+import { requireAuth, requireRole } from "@/lib/auth/guard";
 import {
   createVariable,
   isVariableKeyTaken,
@@ -12,8 +12,11 @@ export const dynamic = "force-dynamic";
 const VALID_TYPES: VariableType[] = ["integer", "string", "boolean"];
 const VALID_KEY = /^[A-Z0-9_]+$/;
 
+// GET is readable by any authenticated user so that the label templates
+// (LABEL_TEMPLATE / DELIVERY_TEMPLATE) are applied when EVERY user prints
+// labels, whatever their role. Writes (POST) remain master-only.
 export async function GET(req: Request) {
-  const auth = await requireRole(req, ["master"]);
+  const auth = await requireAuth(req);
   if (auth instanceof NextResponse) return auth;
 
   const url = new URL(req.url);
