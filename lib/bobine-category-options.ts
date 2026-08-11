@@ -32,7 +32,8 @@ export const COLOR_OPTIONS: CategoryOption[] = [
 ];
 
 export const PLIES_OPTIONS: CategoryOption[] = [
-  { label: "1 Plie", code: "1P" },
+  { label: "0 Plie",  code: "0P" },
+  { label: "1 Plie",  code: "1P" },
   { label: "2 Plies", code: "2P" },
   { label: "3 Plies", code: "3P" },
   { label: "4 Plies", code: "4P" },
