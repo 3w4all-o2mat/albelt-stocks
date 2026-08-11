@@ -2,7 +2,10 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { requirePageAuth } from "@/lib/auth/guard";
 import { getCutsByType } from "@/lib/queries/stocks";
-import { listAteliersForUser } from "@/lib/queries/ateliers";
+import {
+  getDefaultAtelierForUser,
+  listAteliersForUser,
+} from "@/lib/queries/ateliers";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { AtelierFilter } from "@/components/ui/AtelierFilter";
 import SiCutsTable from "@/components/cuts/SiCutsTable";
@@ -35,6 +38,10 @@ export default async function SIPage({
   ]);
   const ateliers = allowedAteliers;
 
+  // Default atelier for new stock initial forms: prefer the user's default atelier
+  const defaultAtelier =
+    (await getDefaultAtelierForUser(user.id)) ?? atelier ?? "";
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-2">
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -63,7 +70,7 @@ export default async function SIPage({
           title="Tous les stocks initiaux"
           subtitle="Coupes de type SI enregistrées"
           titleClassName="text-black"
-          action={<AddStockInitialButton defaultAtelier={atelier ?? ""} />}
+          action={<AddStockInitialButton defaultAtelier={defaultAtelier} />}
         />
         <CardBody className="p-0">
           <SiCutsTable

@@ -163,7 +163,7 @@ export default async function DashboardPage({
               <span className="flex items-baseline gap-2">
                 <span className="font-bold">{kpis.siCount},  </span>
                 <span className="text-base font-normal text-slate-400">
-                  {formatSurface(kpis.siTotalSurface)}
+                  {formatSurface(Math.floor(kpis.siTotalSurface / 1_000_000))}
                 </span>
               </span>
             }

@@ -25,7 +25,7 @@ export const COLOR_OPTIONS: CategoryOption[] = [
   { label: "Vert Pistache", code: "VPIS" },
   { label: "Vert Pétrole", code: "VPET" },
   { label: "Vert", code: "VERT" },
-  { label: "Bleu", code: "B" },
+  { label: "Bleu", code: "BLEU" },
   { label: "Blanc", code: "BLANC" },
   { label: "Noire", code: "NR" },
 

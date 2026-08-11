@@ -179,6 +179,25 @@ export async function listAteliersForUser(
 }
 
 /**
+ * Return the default atelier name for a user (albelt_membership.atelier_id),
+ * or null when none is set, the atelier is inactive, or it no longer exists.
+ */
+export async function getDefaultAtelierForUser(
+  userId: number
+): Promise<string | null> {
+  const row = await queryOne<{ name: string }>(
+    `SELECT a.name
+       FROM albelt_membership m
+       JOIN albelt_atelier a ON a.id = m.atelier_id
+      WHERE m.id = $1
+        AND a.is_active = true
+      LIMIT 1`,
+    [userId]
+  );
+  return row?.name ?? null;
+}
+
+/**
  * Look up an atelier by its exact name.
  * Returns `null` when no atelier with that name exists.
  */

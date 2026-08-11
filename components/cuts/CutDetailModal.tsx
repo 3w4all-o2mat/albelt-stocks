@@ -164,6 +164,18 @@ export default function CutDetailModal({
                 </div>
               </div>
 
+              {/* Description — uniquement pour les chutes perdues (CP) */}
+              {cut.type === "CP" && (
+                <div>
+                  <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-purple-400">
+                    Description
+                  </h3>
+                  <div className="rounded-lg border border-slate-200 bg-slate-50/50 px-4 py-1">
+                    <DetailRow label="Description" value={cut.observation} />
+                  </div>
+                </div>
+              )}
+
               {/* Source / Année — uniquement pour les bobines (BO) */}
               {cut.type === "BO" && (
                 <div>
