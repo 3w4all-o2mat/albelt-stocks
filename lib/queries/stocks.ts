@@ -418,13 +418,18 @@ export async function createBO(input: NewBOInput): Promise<StockPiece> {
     const categoryName = (catRes.rows[0]?.name as string | undefined) ?? "UNKNOWN";
 
     // Compute the next sequence number for BOs in this category.
-    const countRes = await client.query(
-      `SELECT COUNT(*)::int AS count
-         FROM albelt_stocks
-        WHERE type = 'BO' AND stk_category_id = $1`,
-      [input.stk_category_id]
-    );
-    const nextSeq = Number(countRes.rows[0]?.count ?? 0) + 1;
+    let nextSeq: number;
+    if (input.sequence != null) {
+      nextSeq = input.sequence;
+    } else {
+      const countRes = await client.query(
+        `SELECT COUNT(*)::int AS count
+           FROM albelt_stocks
+          WHERE type = 'BO' AND stk_category_id = $1`,
+        [input.stk_category_id]
+      );
+      nextSeq = Number(countRes.rows[0]?.count ?? 0) + 1;
+    }
     const seqStr = String(nextSeq).padStart(3, "0");
     const name = `BO_${categoryName}_${seqStr}`;
 
@@ -435,14 +440,14 @@ export async function createBO(input: NewBOInput): Promise<StockPiece> {
          (type, stk_category_id, parent_id, longueur, largeur, cute_x, cute_y,
           atelier, user_id, company_id, observation, name, chained_name,
           surface, surface_restante,
-          supplier_id, year,
+          supplier_id, year, sequence,
           create_uid, create_date, write_uid, write_date)
        VALUES
          ('BO', $1, NULL, $2, $3, 0, 0,
           $4, $5, $6, $7, $8, $8,
           $9, $9,
-          $10, $11,
-          $12, NOW(), $12, NOW())
+          $10, $11, $12,
+          $13, NOW(), $13, NOW())
        RETURNING *`,
       [
         input.stk_category_id,
@@ -456,6 +461,7 @@ export async function createBO(input: NewBOInput): Promise<StockPiece> {
         surface,
         input.supplier_id ?? null,
         input.year ?? null,
+        nextSeq,
         input.create_uid,
       ]
     );

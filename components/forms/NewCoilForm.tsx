@@ -47,6 +47,7 @@ export function NewCoilForm({ defaultAtelier = "" }: { defaultAtelier?: string }
   const [stk_category_id, setCategoryId] = useState("");
   const [longueur, setLongueur] = useState("");
   const [largeur, setLargeur] = useState("");
+  const [quantite, setQuantite] = useState("1");
   const [atelier, setAtelier] = useState(defaultAtelier);
   const [observation, setObservation] = useState("");
   const [supplier_id, setSupplierId] = useState("");
@@ -62,24 +63,38 @@ export function NewCoilForm({ defaultAtelier = "" }: { defaultAtelier?: string }
 
   const mutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch("/api/stocks", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          stk_category_id: Number(stk_category_id),
-          longueur: Number(longueur),
-          largeur: Number(largeur),
-          atelier,
-          observation: observation || null,
-          supplier_id: supplier_id ? Number(supplier_id) : null,
-          year: year ? Number(year) : null,
-        }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error ?? "Erreur lors de la création");
+      const qty = Number(quantite) || 1;
+      const lastRes = await fetch(`/api/stocks/last-sequence?stk_category_id=${encodeURIComponent(stk_category_id)}`);
+      if (!lastRes.ok) {
+        const data = await lastRes.json().catch(() => ({}));
+        throw new Error(data.error ?? "Erreur lors de la récupération de la séquence");
       }
-      return res.json();
+      const { lastSequence } = (await lastRes.json()) as { lastSequence: number };
+
+      const created: { id: number; name: string | null }[] = [];
+      for (let i = 0; i < qty; i++) {
+        const sequence = lastSequence + i + 1;
+        const res = await fetch("/api/stocks", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            stk_category_id: Number(stk_category_id),
+            longueur: Number(longueur),
+            largeur: Number(largeur),
+            atelier,
+            observation: observation || null,
+            supplier_id: supplier_id ? Number(supplier_id) : null,
+            year: year ? Number(year) : null,
+            sequence,
+          }),
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error ?? "Erreur lors de la création");
+        }
+        created.push(await res.json());
+      }
+      return created[created.length - 1];
     },
     onSuccess: (bo) => {
       router.push(`/coils/${bo.id}`);
@@ -92,6 +107,11 @@ export function NewCoilForm({ defaultAtelier = "" }: { defaultAtelier?: string }
     setError(null);
     if (!stk_category_id || !longueur || !largeur || !atelier) {
       setError("Tous les champs obligatoires doivent être remplis.");
+      return;
+    }
+    const qty = Number(quantite);
+    if (Number.isNaN(qty) || qty < 1 || qty > 19) {
+      setError("La quantité doit être comprise entre 1 et 19.");
       return;
     }
     mutation.mutate();
@@ -153,6 +173,17 @@ export function NewCoilForm({ defaultAtelier = "" }: { defaultAtelier?: string }
               min={1}
               value={largeur}
               onChange={(e) => setLargeur(e.target.value)}
+              required
+            />
+          </Field>
+
+          <Field label="Quantité">
+            <Input
+              type="number"
+              min={1}
+              max={19}
+              value={quantite}
+              onChange={(e) => setQuantite(e.target.value)}
               required
             />
           </Field>

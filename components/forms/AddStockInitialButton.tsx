@@ -42,11 +42,6 @@ export default function AddStockInitialButton({
     enabled: open,
   });
 
-  const siCategories = useMemo(
-    () => (categories ?? []).filter((c) => c.si_active),
-    [categories]
-  );
-
   const surface = useMemo(() => {
     const l = Number(longueur);
     const w = Number(largeur);
@@ -131,14 +126,14 @@ export default function AddStockInitialButton({
             </div>
 
             <form onSubmit={submit} className="grid gap-4 p-5">
-              <Field label="Catégorie (Stock Initial actif)">
+              <Field label="Catégorie">
                 <Select
                   value={stk_category_id}
                   onChange={(e) => setCategoryId(e.target.value)}
                   required
                 >
                   <option value="">— Choisir —</option>
-                  {siCategories.map((c) => (
+                  {(categories ?? []).map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name} · {c.nature} · {c.color} · {c.thickness}
                     </option>

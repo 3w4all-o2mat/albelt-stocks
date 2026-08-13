@@ -237,6 +237,7 @@ export interface NewBOInput {
   create_uid: number;
   supplier_id?: number | null;
   year?: number | null;
+  sequence?: number;
 }
 
 export interface NewSIInput {

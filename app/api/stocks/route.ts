@@ -71,6 +71,9 @@ export async function POST(req: Request) {
     const userId = auth.user.id;
     const companyId = Number(process.env.DEFAULT_COMPANY_ID ?? 1);
 
+    const extraSequence =
+      typeof body.sequence === "number" ? body.sequence : undefined;
+
     const created: StockPiece =
       type === "SI"
         ? await createSI({
@@ -94,6 +97,7 @@ export async function POST(req: Request) {
             supplier_id: body.supplier_id ? Number(body.supplier_id) : null,
             year: body.year ? Number(body.year) : null,
             create_uid: userId,
+            sequence: extraSequence,
           });
 
     await createJournalEntry({

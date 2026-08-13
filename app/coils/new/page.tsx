@@ -1,5 +1,7 @@
 import { requirePageAuth } from "@/lib/auth/guard";
 import { NewCoilForm } from "@/components/forms/NewCoilForm";
+import { findUserById } from "@/lib/queries/membership";
+import { findAtelierById } from "@/lib/queries/ateliers";
 
 export const dynamic = "force-dynamic";
 
@@ -8,8 +10,10 @@ export default async function NewCoilPage({
 }: {
   searchParams?: { atelier?: string };
 }) {
-  await requirePageAuth();
-  const defaultAtelier = searchParams?.atelier?.trim() || "";
+  const sessionUser = await requirePageAuth();
+  const user = await findUserById(sessionUser.id);
+  const userAtelier = user?.atelier_id ? await findAtelierById(user.atelier_id) : null;
+  const defaultAtelier = searchParams?.atelier?.trim() || userAtelier?.name || "";
   return (
     <div className="mx-auto max-w-3xl px-4 py-2">
       <h1 className="text-2xl font-bold tracking-tight text-purple-700">Nouvelle bobine</h1>
