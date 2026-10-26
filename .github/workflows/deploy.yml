@@ -8,7 +8,7 @@ on:
 env:
   IMAGE_NAME: albelt-stocks
   VPS_DEPLOY_DIR: /home/ubuntu/albelt-stocks
-  VPS_PORT: 6000
+  VPS_PORT: 4044
 
 jobs:
   build-and-deploy:

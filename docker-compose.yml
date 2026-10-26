@@ -4,15 +4,15 @@ services:
     container_name: albelt-stocks
     restart: unless-stopped
     ports:
-      - "${PORT:-6000}:6000"
+      - "${PORT:-4044}:4044"
     env_file:
       - .env.production
     environment:
       NODE_ENV: production
-      PORT: 6000
+      PORT: 4044
       HOSTNAME: "0.0.0.0"
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:6000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4044/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 10s
       timeout: 3s
       retries: 5

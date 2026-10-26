@@ -5,7 +5,7 @@
 # Invoked by .github/workflows/deploy.yml with these env vars:
 #   NEW_IMAGE   e.g. albelt-stocks:abc123   (required)
 #   NEW_TAG     e.g. abc123                (used for :previous tagging)
-#   PORT        host port to publish       (default 6000)
+#   PORT        host port to publish       (default 4044)
 #
 # Optional env file at $DEPLOY_DIR/compose.env is sourced first.
 
@@ -14,7 +14,7 @@ set -euo pipefail
 DEPLOY_DIR="${DEPLOY_DIR:-/home/ubuntu/albelt-stocks}"
 NEW_IMAGE="${NEW_IMAGE:-albelt-stocks:latest}"
 NEW_TAG="${NEW_TAG:-latest}"
-PORT="${PORT:-6000}"
+PORT="${PORT:-4044}"
 CONTAINER_NAME="albelt-stocks"
 IMAGE_NAME="albelt-stocks"
 APP_URL="http://127.0.0.1:${PORT}"
